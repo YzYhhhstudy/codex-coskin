@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "id": "xuanzhi",
+  "name": "宣纸 Rice-Paper",
+  "appearance": "light",
+  "palette": {
+    "accent": "#b3402a",
+    "secondary": "#45596b",
+    "surfaceTint": "#efe6d4",
+    "ink": "#2f2a24"
+  },
+  "decor": {
+    "brand": "宣纸工坊",
+    "tagline": "笔墨有骨，代码有禅。",
+    "sub": "留白即呼吸 —— 右下角 🎨 随时调背景与外观。",
+    "quotes": ["正是修行时。", "一笔一世界。", "先让它跑起来，再让它入画。", "留白，是给思路的位置。"],
+    "cards": [
+      { "match": ["Explore and understand", "探索并理解"], "glyph": "笔", "lines": "探索并理解代码\n落笔前先读帖" },
+      { "match": ["Build a new feature", "构建新功能"], "glyph": "墨", "lines": "构建新功能与工具\n浓淡有度" },
+      { "match": ["Review code", "审查代码"], "glyph": "纸", "lines": "审查代码提出修改\n留白处见真章" },
+      { "match": ["Fix issues", "修复问题"], "glyph": "砚", "lines": "修复问题和失败\n慢磨出细工" }
+    ],
+    "subCards": [
+      { "match": ["Build a prototype"], "glyph": "墨", "lines": "搭一个原型\n先淡后浓" }
+    ]
+  },
+  "background": {
+    "css": "radial-gradient(1200px 800px at 88% -10%, rgba(179,64,42,0.10) 0%, transparent 55%), radial-gradient(900px 700px at -8% 112%, rgba(69,89,107,0.12) 0%, transparent 60%), repeating-linear-gradient(0deg, rgba(120,100,70,0.028) 0 2px, transparent 2px 5px), repeating-linear-gradient(90deg, rgba(120,100,70,0.02) 0 3px, transparent 3px 7px), linear-gradient(165deg, #f7f1e3 0%, #efe6d4 55%, #e9dfc9 100%)"
+  }
+}

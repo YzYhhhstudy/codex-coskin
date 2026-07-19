@@ -1,0 +1,14 @@
+{
+  "name": "coskin",
+  "version": "0.12.0",
+  "private": true,
+  "type": "module",
+  "description": "CoSkin — Codex Desktop 换肤 MVP（本机回环 CDP 注入，零依赖）",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "menu": "node src/coskin.mjs menu",
+    "status": "node src/coskin.mjs status"
+  }
+}

@@ -1,0 +1,5 @@
+node_modules/
+themes/custom/
+coskin-shot-*.png
+.DS_Store
+output/

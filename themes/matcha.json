@@ -1,0 +1,15 @@
+{
+  "id": "matcha",
+  "name": "抹茶 Matcha",
+  "appearance": "light",
+  "colors": {
+    "accent": "#3f8f5f",
+    "secondary": "#8fbf6f",
+    "surface": "#f4f9ef",
+    "text": "#1f3a2a"
+  },
+  "background": {
+    "type": "gradient",
+    "css": "radial-gradient(1000px 650px at 88% -6%, #dcedc8 0%, rgba(220,237,200,0) 55%), radial-gradient(850px 600px at -6% 108%, #c8e6d0 0%, rgba(200,230,208,0) 60%), linear-gradient(160deg, #f6faf0 0%, #eef6e6 50%, #e3f0e4 100%)"
+  }
+}

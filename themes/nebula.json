@@ -1,0 +1,15 @@
+{
+  "id": "nebula",
+  "name": "深空 Nebula",
+  "appearance": "dark",
+  "colors": {
+    "accent": "#7c6cff",
+    "secondary": "#22d3ee",
+    "surface": "#12142b",
+    "text": "#e7e9ff"
+  },
+  "background": {
+    "type": "gradient",
+    "css": "radial-gradient(1100px 700px at 88% -8%, #43307f 0%, rgba(67,48,127,0) 55%), radial-gradient(900px 650px at -6% 108%, #14406b 0%, rgba(20,64,107,0) 60%), radial-gradient(700px 500px at 70% 80%, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0) 60%), linear-gradient(160deg, #0b0d1f 0%, #131736 55%, #190f3d 100%)"
+  }
+}

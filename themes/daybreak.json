@@ -1,0 +1,15 @@
+{
+  "id": "daybreak",
+  "name": "晨曦 Daybreak",
+  "appearance": "light",
+  "colors": {
+    "accent": "#f0653f",
+    "secondary": "#4f8de8",
+    "surface": "#fff6f0",
+    "text": "#432d20"
+  },
+  "background": {
+    "type": "gradient",
+    "css": "radial-gradient(1000px 650px at 85% -5%, #ffd9c2 0%, rgba(255,217,194,0) 55%), radial-gradient(900px 600px at -8% 110%, #cfe4ff 0%, rgba(207,228,255,0) 60%), linear-gradient(165deg, #fff7f0 0%, #ffeadd 48%, #eaf2ff 100%)"
+  }
+}
