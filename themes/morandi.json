@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "morandi",
+  "name": "莫兰迪灰粉 Morandi",
+  "appearance": "light",
+  "palette": {
+    "accent": "#a9727a",
+    "secondary": "#8a9a90",
+    "surfaceTint": "#ece6e2",
+    "ink": "#4a4340"
+  },
+  "background": {
+    "css": "radial-gradient(1000px 680px at 86% -8%, rgba(190,150,158,0.28) 0%, rgba(190,150,158,0) 55%), radial-gradient(900px 640px at -6% 110%, rgba(150,168,158,0.26) 0%, rgba(150,168,158,0) 60%), linear-gradient(160deg, #f2ede9 0%, #ece6e2 52%, #e4dcdc 100%)"
+  },
+  "decor": {
+    "brand": "莫兰迪",
+    "tagline": "低饱和，慢下来",
+    "sub": "灰调之间，留一点呼吸给思路。",
+    "quotes": ["慢一点，看清楚。", "克制也是一种审美。", "少即是多。", "留白处，最耐看。"]
+  }
+}
