@@ -1,15 +1,21 @@
 {
+  "schemaVersion": 2,
   "id": "daybreak",
   "name": "晨曦 Daybreak",
   "appearance": "light",
-  "colors": {
+  "palette": {
     "accent": "#f0653f",
     "secondary": "#4f8de8",
-    "surface": "#fff6f0",
-    "text": "#432d20"
+    "surfaceTint": "#fff6f0",
+    "ink": "#432d20"
   },
   "background": {
-    "type": "gradient",
     "css": "radial-gradient(1000px 650px at 85% -5%, #ffd9c2 0%, rgba(255,217,194,0) 55%), radial-gradient(900px 600px at -8% 110%, #cfe4ff 0%, rgba(207,228,255,0) 60%), linear-gradient(165deg, #fff7f0 0%, #ffeadd 48%, #eaf2ff 100%)"
+  },
+  "decor": {
+    "brand": "晨曦",
+    "tagline": "天亮了，开工",
+    "sub": "暖光里开始新的一天代码。",
+    "quotes": ["新的一天，从一次 commit 开始。", "趁清晨脑子最清醒。", "先泡杯咖啡再说。", "早起的 bug 有虫吃。"]
   }
 }

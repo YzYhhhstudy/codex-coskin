@@ -9,11 +9,27 @@
 菜单、按钮、滚动条、diff 红绿、内嵌终端的 ANSI 16 色、深浅外观类，**每个控件**都跟随主题，
 且自动做对比度兜底。官方 token 清单为真机实测（[docs/codex-token-inventory.json](docs/codex-token-inventory.json)）。
 
-四套内置主题全部是**纯 CSS 渐变**（零素材、零版权风险）；「宣纸 Rice-Paper」由一句
-「宣纸水墨禅意，朱砂点睛」生成，是「一句话 → 主题」通道的示例。
+**9 款内置主题全部是纯 CSS 渐变**（零素材、零版权风险），开箱即用。
 
 > 状态：机制与控件级接管已在隔离环境验证（60+ 项断言，见 `docs/verify/`），代码零依赖（Node 22+）。
 > 目前仅 macOS（Windows 待做）。需要已装好的 Codex Desktop（即 `/Applications/ChatGPT.app`）。
+
+## 内置皮肤（9 款，纯渐变开箱即用）
+
+| id | 名称 | 外观 | 气质 |
+| --- | --- | --- | --- |
+| `nebula` | 深空 Nebula | 深 | 紫青星云 |
+| `neon` | 赛博霓虹 Neon | 深 | 霓虹雨夜 |
+| `terminal` | 终端黑绿 Terminal | 深 | 磷光绿老派终端 |
+| `sunset` | 日落橙紫 Sunset | 深 | 橙紫黄昏 |
+| `daybreak` | 晨曦 Daybreak | 浅 | 暖橙晨光 |
+| `matcha` | 抹茶 Matcha | 浅 | 清爽绿意 |
+| `morandi` | 莫兰迪灰粉 Morandi | 浅 | 低饱和灰粉 |
+| `xuanzhi` | 宣纸 Rice-Paper | 浅 | 水墨朱砂（「一句话→主题」示例，带笔墨纸砚卡片字）|
+| `xiuxing` | 正是修行时 | 浅 | 朱砂金墨 · 酒色财气全套 decor（横幅/卡片字/戒条/桌宠台词的满配示范）|
+
+每款都带主题化的横幅文案与桌宠台词；`xiuxing` 演示了 `cards`/`subCards` 把首页四张
+建议卡改成「酒色财气」并配双行戒条——想仿制照它的 [themes/xiuxing.json](themes/xiuxing.json) 抄字段即可。
 
 ## 安装（第一次用）
 
@@ -102,7 +118,7 @@ node src/coskin.mjs import ~/Downloads/xx.coskin.json
 
 ```bash
 node src/coskin.mjs menu                     # 交互菜单（.command 双击的就是它）
-node src/coskin.mjs apply nebula             # 内置主题：nebula / daybreak / matcha / xuanzhi
+node src/coskin.mjs apply nebula             # 9 款内置主题，见下方「内置皮肤」
 node src/coskin.mjs apply --image ~/x.jpg --name 我的壁纸
 node src/coskin.mjs apply --spec ~/mytheme.json   # 一句话→AI 产出 spec→主题
 node src/coskin.mjs restore                  # 还原官方

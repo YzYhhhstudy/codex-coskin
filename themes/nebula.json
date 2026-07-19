@@ -1,15 +1,21 @@
 {
+  "schemaVersion": 2,
   "id": "nebula",
   "name": "深空 Nebula",
   "appearance": "dark",
-  "colors": {
+  "palette": {
     "accent": "#7c6cff",
     "secondary": "#22d3ee",
-    "surface": "#12142b",
-    "text": "#e7e9ff"
+    "surfaceTint": "#12142b",
+    "ink": "#e7e9ff"
   },
   "background": {
-    "type": "gradient",
     "css": "radial-gradient(1100px 700px at 88% -8%, #43307f 0%, rgba(67,48,127,0) 55%), radial-gradient(900px 650px at -6% 108%, #14406b 0%, rgba(20,64,107,0) 60%), radial-gradient(700px 500px at 70% 80%, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0) 60%), linear-gradient(160deg, #0b0d1f 0%, #131736 55%, #190f3d 100%)"
+  },
+  "decor": {
+    "brand": "深空",
+    "tagline": "在星海里造东西",
+    "sub": "把想法丢进深空，让它自己发亮。",
+    "quotes": ["宇宙很大，先跑起来。", "每个函数都是一颗星。", "深夜的深空最安静。", "向着未知，编译。"]
   }
 }

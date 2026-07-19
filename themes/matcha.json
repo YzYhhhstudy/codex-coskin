@@ -1,15 +1,21 @@
 {
+  "schemaVersion": 2,
   "id": "matcha",
   "name": "抹茶 Matcha",
   "appearance": "light",
-  "colors": {
+  "palette": {
     "accent": "#3f8f5f",
     "secondary": "#8fbf6f",
-    "surface": "#f4f9ef",
-    "text": "#1f3a2a"
+    "surfaceTint": "#f4f9ef",
+    "ink": "#1f3a2a"
   },
   "background": {
-    "type": "gradient",
     "css": "radial-gradient(1000px 650px at 88% -6%, #dcedc8 0%, rgba(220,237,200,0) 55%), radial-gradient(850px 600px at -6% 108%, #c8e6d0 0%, rgba(200,230,208,0) 60%), linear-gradient(160deg, #f6faf0 0%, #eef6e6 50%, #e3f0e4 100%)"
+  },
+  "decor": {
+    "brand": "抹茶",
+    "tagline": "清清爽爽写代码",
+    "sub": "一盏抹茶的绿意，敲键盘也温柔。",
+    "quotes": ["深呼吸，再敲下一行。", "绿色让眼睛歇一歇。", "慢工出细活。", "清爽的代码像新茶。"]
   }
 }
