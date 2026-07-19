@@ -12,7 +12,9 @@
 **9 款内置主题全部是纯 CSS 渐变**（零素材、零版权风险），开箱即用。
 
 > 状态：机制与控件级接管已在隔离环境验证（60+ 项断言，见 `docs/verify/`），代码零依赖（Node 22+）。
-> 目前仅 macOS（Windows 待做）。需要已装好的 Codex Desktop（即 `/Applications/ChatGPT.app`）。
+> **macOS**：完整支持、日期化真机验证。**Windows**：独立安装版已实现（`双击换肤.bat`），
+> 但尚未真机验证；Microsoft Store/MSIX 版暂不支持（无法可靠带调试参数启动）。
+> 需要已装好的 Codex Desktop。
 
 ## 内置皮肤（9 款，纯渐变开箱即用）
 

@@ -177,7 +177,7 @@ async function applyTheme(port, themeId, confirmRestart = null) {
 }
 
 async function restore(port) {
-  const state = await appState(findApp(), port);
+  const state = await appState(await findApp(), port);
   if (!state.cdpAlive) {
     log("Codex 没在调试模式下运行 —— 皮肤本来就只在这种会话里存在，现在已是官方原生界面。");
     return;
@@ -351,7 +351,7 @@ async function importThemeFile(sharePath) {
 }
 
 async function status(port) {
-  const appPath = findApp();
+  const appPath = await findApp();
   const state = await appState(appPath, port);
   log(`应用：${appPath}`);
   log(`运行中：${state.running ? "是" : "否"}    调试端口 ${port}：${state.cdpAlive ? "可用" : "未开"}`);

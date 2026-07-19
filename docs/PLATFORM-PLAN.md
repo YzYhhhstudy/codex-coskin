@@ -8,7 +8,14 @@ DOM/token 选择器。因此扩展的本质是「新增一个 launcher + 一份�
 
 ---
 
-## 一、Windows 版 Codex 实现方案（1~2 天）
+## 一、Windows 版 Codex 实现方案（独立版已实现，待真机验证）
+
+> **进度（2026-07-19）**：平台分派 + 独立安装版 launcher 已落地——
+> `src/launcher.mjs`（按 `process.platform` 分派）、`src/launcher-win.mjs`
+> （AppX/注册表找应用、`CloseMainWindow()` 优雅关闭、`Start-Process` 带调试参数启动）、
+> `双击换肤.bat` 双击入口。同意门与"仅会话"铁律照搬。**尚未在真实 Windows 上验证**；
+> Store/MSIX 版检测到会给明确指引而非静默失败。下方是完整设计说明。
+
 
 ### 目标与差异
 Windows 上 Codex Desktop 是 ChatGPT 桌面应用，两种形态：
