@@ -166,8 +166,8 @@ const PANEL_CSS = `
 }
 #coskin-ui .coskin-fab:hover { transform: scale(1.08); }
 #coskin-ui .coskin-panel {
-  display: none; flex-direction: column; gap: 4px; margin-bottom: 10px; padding: 10px;
-  min-width: 224px; max-width: 268px; border-radius: 14px; background: rgba(20, 22, 40, 0.84); color: #f2f4ff;
+  display: none; position: relative; flex-direction: column; gap: 4px; margin-bottom: 10px; padding: 10px;
+  width: 340px; border-radius: 14px; background: rgba(20, 22, 40, 0.84); color: #f2f4ff;
   box-shadow: 0 12px 36px rgba(0,0,0,.4); backdrop-filter: blur(18px) saturate(1.1);
   border: 1px solid rgba(255,255,255,.08);
 }
@@ -181,6 +181,13 @@ const PANEL_CSS = `
 #coskin-ui .coskin-item:hover { background: rgba(255,255,255,.10); }
 #coskin-ui .coskin-item.coskin-active { background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
 #coskin-ui .coskin-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+/* 主题列表=浮层下拉：绝对定位，不撑高看板（动静结合） */
+#coskin-ui .coskin-list {
+  position: absolute; left: 8px; right: 8px; z-index: 8; flex-direction: column; gap: 3px;
+  background: rgba(22, 24, 44, 0.98); border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0,0,0,.55); backdrop-filter: blur(22px) saturate(1.1);
+  max-height: 320px; overflow-y: auto; overflow-x: hidden; padding: 6px;
+}
 #coskin-ui .coskin-list::-webkit-scrollbar { width: 8px; }
 #coskin-ui .coskin-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 4px; }
 #coskin-ui .coskin-list::-webkit-scrollbar-track { background: transparent; }
@@ -202,7 +209,7 @@ const PANEL_CSS = `
 #coskin-ui .coskin-div { height: 1px; margin: 6px 4px; background: rgba(255,255,255,.12); }
 #coskin-ui .coskin-hint { font-size: 10px; font-weight: 500; line-height: 1.5; opacity: .5; padding: 2px 6px 0; white-space: normal; }
 #coskin-ui .coskin-ctl { display: flex; align-items: center; gap: 5px; padding: 3px 6px; }
-#coskin-ui .coskin-ctl-label { font-size: 11px; font-weight: 600; opacity: .6; width: 32px; flex: none; }
+#coskin-ui .coskin-ctl-label { font-size: 11px; font-weight: 600; opacity: .6; flex: none; white-space: nowrap; padding-right: 2px; }
 #coskin-ui .coskin-mini {
   flex: 1; border: 1px solid rgba(255,255,255,.16); background: transparent; color: inherit;
   font-size: 11px; font-weight: 600; padding: 4px 0; border-radius: 7px; cursor: pointer;
@@ -300,7 +307,7 @@ export function buildInjectionScript(themes, activeId) {
     en: {
       header: "COSKIN · Skins", native: "Official Default", exportBtn: "⇩ Export", delBtn: "🗑 Delete",
       delConfirm: "Click again to delete", noSel: "No theme", selectTip: "Click theme name to show / hide list",
-      bg: "Backdrop", raw: "Original", immersive: "Immersive", ambient: "Ambient", subtle: "Subtle",
+      bg: "Backdrop", raw: "Raw", immersive: "Immersive", ambient: "Ambient", subtle: "Subtle",
       appearance: "Mode", dark: "Dark", light: "Light", pet: "Pet", on: "On", off: "Off",
       makeImg: "＋ Make theme from image", uploadShare: "↥ Import .coskin file",
       hint: "Click the theme name up top to open the list; pick one, then Export it as .coskin or Delete it (built-ins are hidden, not removed).",
@@ -732,12 +739,10 @@ export function buildInjectionScript(themes, activeId) {
   const panel = D.createElement("div"); panel.className = "coskin-panel";
   const head = D.createElement("div"); head.className = "coskin-head"; head.textContent = tr("header");
   panel.appendChild(head);
-  // 主题列表：默认收起，点顶部当前主题名才展开
+  // 主题列表：默认收起的浮层（绝对定位，展开不撑高看板）
   const items = D.createElement("div");
-  items.style.flexDirection = "column"; items.style.gap = "4px";
-  items.style.maxHeight = "244px"; items.style.overflowY = "auto"; items.style.overflowX = "hidden";
-  items.style.display = "none";
   items.className = "coskin-list";
+  items.style.display = "none";
 
   const makeItem = (key, label, swatch, onClick) => {
     const b = D.createElement("button");
@@ -818,9 +823,20 @@ export function buildInjectionScript(themes, activeId) {
   };
   window.__coskinDeleteTheme = deleteTheme;
 
-  // 折叠：点当前主题名展开 / 收起列表；选中一个主题后自动收起
+  // 折叠：点当前主题名弹出/收起浮层列表；选中一个主题后自动收起
   let listOpen = false;
-  const setListOpen = (v) => { listOpen = v; items.style.display = v ? "flex" : "none"; if (caret) caret.textContent = v ? "▾" : "▸"; };
+  const setListOpen = (v) => {
+    listOpen = v;
+    if (v) {
+      // 浮层定位：紧贴选择器行下方；空间不够则向上弹
+      const top = actionRow.offsetTop + actionRow.offsetHeight + 6;
+      items.style.top = top + "px";
+      items.style.display = "flex";
+    } else {
+      items.style.display = "none";
+    }
+    if (caret) caret.textContent = v ? "▾" : "▸";
+  };
   const renderThemeItems = () => {
     items.textContent = "";
     for (const th of THEMES) items.appendChild(makeItem(th.id, th.name, th.accent, () => { setTheme(th.id); setListOpen(false); }));
@@ -976,7 +992,9 @@ export function buildInjectionScript(themes, activeId) {
   // 点面板外的任何地方自动收起（重注入前先清掉旧监听，避免累积）
   if (window.__coskinOutsideClick) D.removeEventListener("mousedown", window.__coskinOutsideClick);
   window.__coskinOutsideClick = (e) => {
-    if (panel.classList.contains("coskin-open") && !ui.contains(e.target)) panel.classList.remove("coskin-open");
+    if (!ui.contains(e.target)) { panel.classList.remove("coskin-open"); return; }
+    // 面板内、但点在列表和选择器之外 → 收起浮层列表
+    if (listOpen && !items.contains(e.target) && !nameBtn.contains(e.target)) setListOpen(false);
   };
   D.addEventListener("mousedown", window.__coskinOutsideClick);
 
