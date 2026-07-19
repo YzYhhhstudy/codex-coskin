@@ -34,13 +34,16 @@ check("注入成功", ok === "coskin:ok", String(ok));
 const probe = await cdp.evaluate(PROBE_SCRIPT);
 check("当前主题 = xiuxing-src", probe?.active === "xiuxing-src", JSON.stringify(probe));
 
-console.log("[2] 面板 UI：每个主题右侧有导出箭头 + 有上传按钮");
+console.log("[2] 面板 UI：可滚动列表 + 固定导出/删除操作条 + 上传按钮");
 const ui = await cdp.evaluate(`(() => ({
-  dl: document.querySelectorAll("#coskin-ui .coskin-dl").length,
-  themes: document.querySelectorAll("#coskin-ui [data-coskin-theme]:not([data-coskin-theme='__native__'])").length,
+  scrollable: getComputedStyle(document.querySelector("#coskin-ui .coskin-list")).overflowY === "auto",
+  hasExport: !!document.querySelector("#coskin-ui .coskin-act"),
+  hasDel: !!document.querySelector("#coskin-ui .coskin-act-del"),
+  label: (document.querySelector("#coskin-ui .coskin-act-label") || {}).textContent,
   hasImport: [...document.querySelectorAll("#coskin-ui .coskin-item")].some((b) => b.textContent.includes(".coskin 主题文件")),
 }))()`);
-check("导出箭头数 = 主题数", ui.dl === ui.themes && ui.dl >= 1, JSON.stringify(ui));
+check("列表可滚动（上弹列表）", ui.scrollable === true, JSON.stringify(ui));
+check("有固定「导出/删除」操作条，且显示当前主题名", ui.hasExport && ui.hasDel && ui.label === "正是修行时", JSON.stringify(ui));
 check("有「上传 .coskin 主题文件」按钮", ui.hasImport === true);
 
 console.log("[3] 导出（悬浮窗 ⇩ 走的同一函数）→ 导入（悬浮窗上传走的同一函数）→ 再导出");
@@ -65,6 +68,20 @@ console.log("[5] 重新注入后导入的主题仍在（localStorage 持久化�
 await cdp.evaluate(buildInjectionScript([srcEntry], "xiuxing-src"), { timeoutMs: 30000 });
 const persisted = await cdp.evaluate(`!!document.querySelector('[data-coskin-theme="${newId}"]')`);
 check("重注入后导入主题从 localStorage 恢复", persisted === true);
+
+console.log("[6] 删除：导入主题=真删除；重注入后不再出现");
+const delImp = await cdp.evaluate(`(() => { window.__coskinSetTheme("${newId}"); return JSON.stringify(window.__coskinDeleteTheme("${newId}")); })()`);
+check("删除导入主题返回 removed", JSON.parse(delImp).kind === "removed", delImp);
+check("删除后从列表消失", (await cdp.evaluate(`!document.querySelector('[data-coskin-theme="${newId}"]')`)) === true);
+await cdp.evaluate(buildInjectionScript([srcEntry], "xiuxing-src"), { timeoutMs: 30000 });
+check("重注入后导入主题不再回来（真删除）", (await cdp.evaluate(`!document.querySelector('[data-coskin-theme="${newId}"]')`)) === true);
+
+console.log("[7] 删除：内置主题=软隐藏；重注入后仍不显示（可在 localStorage 恢复）");
+const delBuiltin = await cdp.evaluate(`(() => { window.__coskinSetTheme("xiuxing-src"); return JSON.stringify(window.__coskinDeleteTheme("xiuxing-src")); })()`);
+check("删除内置主题返回 hidden", JSON.parse(delBuiltin).kind === "hidden", delBuiltin);
+await cdp.evaluate(buildInjectionScript([srcEntry], "xiuxing-src"), { timeoutMs: 30000 });
+check("重注入后被隐藏的内置主题不显示", (await cdp.evaluate(`!document.querySelector('[data-coskin-theme="xiuxing-src"]')`)) === true);
+check("隐藏记录在 coskin.hidden.v1", (await cdp.evaluate(`(JSON.parse(localStorage.getItem("coskin.hidden.v1")||"[]")).includes("xiuxing-src")`)) === true);
 
 cdp.close();
 if (failures.length) { console.error(`\n${failures.length} 项失败：${failures.join("；")}`); process.exit(1); }

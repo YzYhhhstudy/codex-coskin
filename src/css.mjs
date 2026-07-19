@@ -181,14 +181,18 @@ const PANEL_CSS = `
 #coskin-ui .coskin-item:hover { background: rgba(255,255,255,.10); }
 #coskin-ui .coskin-item.coskin-active { background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
 #coskin-ui .coskin-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
-#coskin-ui .coskin-row { display: flex; align-items: center; gap: 2px; }
-#coskin-ui .coskin-row .coskin-item { flex: 1; min-width: 0; }
-#coskin-ui .coskin-dl {
-  flex: none; width: 26px; height: 30px; border: none; background: transparent; color: inherit;
-  opacity: .38; cursor: pointer; border-radius: 7px; font-size: 14px; line-height: 30px; text-align: center;
+#coskin-ui .coskin-list::-webkit-scrollbar { width: 8px; }
+#coskin-ui .coskin-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 4px; }
+#coskin-ui .coskin-list::-webkit-scrollbar-track { background: transparent; }
+#coskin-ui .coskin-actions { display: flex; align-items: center; gap: 6px; padding: 2px 4px; }
+#coskin-ui .coskin-act-label { flex: 1; min-width: 0; font-size: 11px; font-weight: 700; opacity: .62; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#coskin-ui .coskin-act {
+  flex: none; border: 1px solid rgba(255,255,255,.16); background: transparent; color: inherit;
+  font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 7px; cursor: pointer;
 }
-#coskin-ui .coskin-row:hover .coskin-dl { opacity: .7; }
-#coskin-ui .coskin-dl:hover { opacity: 1; background: rgba(255,255,255,.14); }
+#coskin-ui .coskin-act:hover:not(:disabled) { background: rgba(255,255,255,.12); }
+#coskin-ui .coskin-act:disabled { opacity: .3; cursor: default; }
+#coskin-ui .coskin-act-del:hover:not(:disabled) { background: rgba(255,90,90,.22); border-color: rgba(255,120,120,.5); }
 #coskin-ui .coskin-div { height: 1px; margin: 6px 4px; background: rgba(255,255,255,.12); }
 #coskin-ui .coskin-hint { font-size: 10px; font-weight: 500; line-height: 1.5; opacity: .5; padding: 2px 6px 0; white-space: normal; }
 #coskin-ui .coskin-ctl { display: flex; align-items: center; gap: 5px; padding: 3px 6px; }
@@ -271,6 +275,7 @@ export function buildInjectionScript(themes, activeId) {
   const IMPORT_KEY = "coskin.imported.v1";
   const SHARE_FORMAT = "coskin-theme";
   const D = document;
+  const HIDDEN_KEY = "coskin.hidden.v1";
   const loadImported = () => {
     try { const a = JSON.parse(localStorage.getItem(IMPORT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
     catch { return []; }
@@ -278,6 +283,11 @@ export function buildInjectionScript(themes, activeId) {
   const saveImported = (list) => {
     try { localStorage.setItem(IMPORT_KEY, JSON.stringify(list)); return true; } catch { return false; }
   };
+  const loadHidden = () => {
+    try { const a = JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+    catch { return []; }
+  };
+  const saveHidden = (a) => { try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(a)); } catch {} };
   ${coskinExtractPalette.toString()}
   ${coskinDecideAppearance.toString()}
   ${coskinCompileTokens.toString()}
@@ -332,6 +342,7 @@ export function buildInjectionScript(themes, activeId) {
     }
     window.__coskinActive = t ? t.id : null;
     refreshCtls();
+    if (window.__coskinSyncActions) window.__coskinSyncActions();
     applyDecor(t);
   };
   window.__coskinSetTheme = setTheme;
@@ -678,6 +689,9 @@ export function buildInjectionScript(themes, activeId) {
   for (const e of loadImported()) {
     if (e && e.id && e.spec && typeof e.bg === "string" && !THEMES.some((t) => t.id === e.id)) THEMES.push(e);
   }
+  // 被隐藏的内置/磁盘主题（面板里"删除"的软删除）从列表滤掉
+  const hiddenSet = new Set(loadHidden());
+  for (let i = THEMES.length - 1; i >= 0; i--) if (hiddenSet.has(THEMES[i].id)) THEMES.splice(i, 1);
 
   D.getElementById("coskin-ui")?.remove();
   ensureStyle("coskin-ui-style", ${JSON.stringify(PANEL_CSS)});
@@ -687,6 +701,8 @@ export function buildInjectionScript(themes, activeId) {
   panel.appendChild(head);
   const items = D.createElement("div");
   items.style.display = "flex"; items.style.flexDirection = "column"; items.style.gap = "4px";
+  items.style.maxHeight = "244px"; items.style.overflowY = "auto"; items.style.overflowX = "hidden";
+  items.className = "coskin-list";
   panel.appendChild(items);
 
   const makeItem = (key, label, swatch, onClick) => {
@@ -752,20 +768,58 @@ export function buildInjectionScript(themes, activeId) {
   };
   window.__coskinApplyShare = applyShareText;
 
+  // 删除/隐藏一个主题：导入的与快捷槽=真删除；内置/磁盘自定义=软隐藏（下次可在别处恢复）
+  const deleteTheme = (id) => {
+    const idx = THEMES.findIndex((x) => x.id === id);
+    if (idx < 0) return { kind: "none" };
+    let kind;
+    if (id === "quick") { try { localStorage.removeItem(QUICK_KEY); } catch {} kind = "removed"; }
+    else if (id.indexOf("imp-") === 0) { saveImported(loadImported().filter((e) => e.id !== id)); kind = "removed"; }
+    else { const h = loadHidden(); if (!h.includes(id)) { h.push(id); saveHidden(h); } kind = "hidden"; }
+    THEMES.splice(idx, 1);
+    if (window.__coskinActive === id) setTheme(null);
+    renderThemeItems();
+    if (window.__coskinSyncActions) window.__coskinSyncActions();
+    return { kind };
+  };
+  window.__coskinDeleteTheme = deleteTheme;
+
   const renderThemeItems = () => {
     items.textContent = "";
-    for (const t of THEMES) {
-      const row = D.createElement("div"); row.className = "coskin-row";
-      row.appendChild(makeItem(t.id, t.name, t.accent, () => setTheme(t.id)));
-      const dl = D.createElement("button");
-      dl.className = "coskin-dl"; dl.textContent = "⇩"; dl.title = "导出为 .coskin 文件";
-      dl.addEventListener("click", (e) => { e.stopPropagation(); triggerExport(t); });
-      row.appendChild(dl);
-      items.appendChild(row);
-    }
+    for (const t of THEMES) items.appendChild(makeItem(t.id, t.name, t.accent, () => setTheme(t.id)));
     items.appendChild(makeItem("__native__", "官方原生", "linear-gradient(135deg,#8a8f98,#e5e7eb)", () => setTheme(null)));
   };
   renderThemeItems();
+
+  // —— 固定操作条：对「当前选中主题」导出 / 删除 ——
+  panel.appendChild(Object.assign(D.createElement("div"), { className: "coskin-div" }));
+  const actionRow = D.createElement("div"); actionRow.className = "coskin-actions";
+  const actLabel = D.createElement("span"); actLabel.className = "coskin-act-label";
+  const expBtn = D.createElement("button"); expBtn.className = "coskin-act"; expBtn.textContent = "⇩ 导出";
+  const delBtn = D.createElement("button"); delBtn.className = "coskin-act coskin-act-del"; delBtn.textContent = "🗑 删除";
+  const DEL_LABEL = "🗑 删除";
+  let delArmed = null;
+  const updateActionBar = () => {
+    const id = window.__coskinActive;
+    const t = id ? THEMES.find((x) => x.id === id) : null;
+    actLabel.textContent = t ? t.name : "未选主题";
+    expBtn.disabled = !t; delBtn.disabled = !t;
+    delBtn.textContent = DEL_LABEL; delArmed = null;
+  };
+  window.__coskinSyncActions = updateActionBar;
+  expBtn.addEventListener("click", () => {
+    const t = THEMES.find((x) => x.id === window.__coskinActive);
+    if (t) triggerExport(t);
+  });
+  delBtn.addEventListener("click", () => {
+    const id = window.__coskinActive;
+    if (!id) return;
+    if (delArmed !== id) { delArmed = id; delBtn.textContent = "再点一次删除"; setTimeout(() => { if (delArmed === id) updateActionBar(); }, 2600); return; }
+    const r = deleteTheme(id); // deleteTheme 内部会刷新 action bar
+    // updateActionBar 已在 deleteTheme 里触发
+  });
+  actionRow.appendChild(actLabel); actionRow.appendChild(expBtn); actionRow.appendChild(delBtn);
+  panel.appendChild(actionRow);
 
   // —— B/A 级现场调节：背景可见度 + 深浅翻转 ——
   panel.appendChild(Object.assign(D.createElement("div"), { className: "coskin-div" }));
@@ -872,7 +926,7 @@ export function buildInjectionScript(themes, activeId) {
 
   const hint = D.createElement("div");
   hint.className = "coskin-hint";
-  hint.textContent = "每个主题右侧 ⇩ 可导出为 .coskin 文件分享；想看原图选「原图」，判错深浅点「外观」翻转。";
+  hint.textContent = "选中主题后，底部「⇩ 导出」分享成 .coskin 文件、「🗑 删除」从列表移除（内置为隐藏可恢复）。";
   panel.appendChild(hint);
 
   const fab = D.createElement("button");
