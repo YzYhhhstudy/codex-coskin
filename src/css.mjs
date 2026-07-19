@@ -181,6 +181,14 @@ const PANEL_CSS = `
 #coskin-ui .coskin-item:hover { background: rgba(255,255,255,.10); }
 #coskin-ui .coskin-item.coskin-active { background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
 #coskin-ui .coskin-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+#coskin-ui .coskin-row { display: flex; align-items: center; gap: 2px; }
+#coskin-ui .coskin-row .coskin-item { flex: 1; min-width: 0; }
+#coskin-ui .coskin-dl {
+  flex: none; width: 26px; height: 30px; border: none; background: transparent; color: inherit;
+  opacity: .38; cursor: pointer; border-radius: 7px; font-size: 14px; line-height: 30px; text-align: center;
+}
+#coskin-ui .coskin-row:hover .coskin-dl { opacity: .7; }
+#coskin-ui .coskin-dl:hover { opacity: 1; background: rgba(255,255,255,.14); }
 #coskin-ui .coskin-div { height: 1px; margin: 6px 4px; background: rgba(255,255,255,.12); }
 #coskin-ui .coskin-hint { font-size: 10px; font-weight: 500; line-height: 1.5; opacity: .5; padding: 2px 6px 0; white-space: normal; }
 #coskin-ui .coskin-ctl { display: flex; align-items: center; gap: 5px; padding: 3px 6px; }
@@ -260,7 +268,16 @@ export function buildInjectionScript(themes, activeId) {
   const THEMES = ${JSON.stringify(themes)};
   const ACTIVE = ${JSON.stringify(activeId)};
   const QUICK_KEY = "coskin.quickSlot.v5";
+  const IMPORT_KEY = "coskin.imported.v1";
+  const SHARE_FORMAT = "coskin-theme";
   const D = document;
+  const loadImported = () => {
+    try { const a = JSON.parse(localStorage.getItem(IMPORT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+    catch { return []; }
+  };
+  const saveImported = (list) => {
+    try { localStorage.setItem(IMPORT_KEY, JSON.stringify(list)); return true; } catch { return false; }
+  };
   ${coskinExtractPalette.toString()}
   ${coskinDecideAppearance.toString()}
   ${coskinCompileTokens.toString()}
@@ -657,6 +674,10 @@ export function buildInjectionScript(themes, activeId) {
       if (q && q.id === "quick" && q.spec && typeof q.bg === "string" && !THEMES.some((t) => t.id === "quick")) THEMES.push(q);
     }
   } catch {}
+  // 导入的 .coskin 主题（面板导入的持久化，和快捷槽一样存本地）
+  for (const e of loadImported()) {
+    if (e && e.id && e.spec && typeof e.bg === "string" && !THEMES.some((t) => t.id === e.id)) THEMES.push(e);
+  }
 
   D.getElementById("coskin-ui")?.remove();
   ensureStyle("coskin-ui-style", ${JSON.stringify(PANEL_CSS)});
@@ -677,9 +698,71 @@ export function buildInjectionScript(themes, activeId) {
     b.addEventListener("click", onClick);
     return b;
   };
+  // 从面板内存里的主题条目重建可分享的 .coskin 结构（壁纸从 bg 里的 data URL 抽出）
+  const buildShare = (t) => {
+    const share = {
+      format: SHARE_FORMAT, formatVersion: 1,
+      theme: { id: t.id, name: t.name, appearance: t.appearance === "light" ? "light" : "dark", palette: t.spec.palette },
+    };
+    if (t.decor) share.theme.decor = t.decor;
+    const m = String(t.bg).match(/url\\(\\s*(?:"|')?(data:[^)"']+)/);
+    if (m) {
+      const du = m[1];
+      share.wallpaper = { mime: du.slice(5).split(";")[0], dataBase64: du.slice(du.indexOf(",") + 1) };
+    } else {
+      share.theme.background = { css: String(t.bg) };
+    }
+    return share;
+  };
+  window.__coskinBuildShare = (id) => { const t = THEMES.find((x) => x.id === id); return t ? JSON.stringify(buildShare(t)) : null; };
+  const triggerExport = (t) => {
+    const blob = new Blob([JSON.stringify(buildShare(t))], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = D.createElement("a"); a.href = url;
+    a.download = (String(t.name).replace(/[\\s\\/:*?"<>|]+/g, "_").slice(0, 60) || "theme") + ".coskin.json";
+    D.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  // .coskin 文件 → 面板主题条目（和 CLI import 同格式，可互通）
+  const entryFromShare = (raw) => {
+    if (!raw || raw.format !== SHARE_FORMAT || !raw.theme) throw new Error("不是 CoSkin 主题文件");
+    const t = raw.theme;
+    if (!t.palette || !/^#[0-9a-f]{6}$/i.test(t.palette.accent || "")) throw new Error("主题文件配色非法");
+    const appearance = t.appearance === "light" ? "light" : "dark";
+    let bg;
+    if (raw.wallpaper && raw.wallpaper.dataBase64) {
+      const du = "data:" + raw.wallpaper.mime + ";base64," + raw.wallpaper.dataBase64;
+      bg = "url(" + JSON.stringify(du) + ") center center / cover no-repeat fixed";
+    } else if (t.background && typeof t.background.css === "string" && t.background.css.indexOf("url(") < 0) {
+      bg = t.background.css;
+    } else {
+      const c = coskinCompileTokens({ appearance: appearance, palette: t.palette }).colors;
+      bg = "linear-gradient(160deg, " + c.surfaceDeep + " 0%, " + c.surface + " 55%, " + c.surfaceRaised + " 100%)";
+    }
+    let base = "imp-" + (String(t.id || t.name || "shared").replace(/[^a-z0-9_-]/gi, "") || "shared");
+    let id = base, n = 2;
+    while (THEMES.some((x) => x.id === id)) { id = base + "-" + n; n++; }
+    return { id: id, name: t.name || "导入主题", accent: t.palette.accent, appearance: appearance, spec: { palette: t.palette }, decor: t.decor || null, bg: bg };
+  };
+  const applyShareText = (text) => {
+    const entry = entryFromShare(JSON.parse(text));
+    const list = loadImported(); list.push(entry); saveImported(list);
+    THEMES.push(entry); renderThemeItems(); setTheme(entry.id);
+    return entry.id;
+  };
+  window.__coskinApplyShare = applyShareText;
+
   const renderThemeItems = () => {
     items.textContent = "";
-    for (const t of THEMES) items.appendChild(makeItem(t.id, t.name, t.accent, () => setTheme(t.id)));
+    for (const t of THEMES) {
+      const row = D.createElement("div"); row.className = "coskin-row";
+      row.appendChild(makeItem(t.id, t.name, t.accent, () => setTheme(t.id)));
+      const dl = D.createElement("button");
+      dl.className = "coskin-dl"; dl.textContent = "⇩"; dl.title = "导出为 .coskin 文件";
+      dl.addEventListener("click", (e) => { e.stopPropagation(); triggerExport(t); });
+      row.appendChild(dl);
+      items.appendChild(row);
+    }
     items.appendChild(makeItem("__native__", "官方原生", "linear-gradient(135deg,#8a8f98,#e5e7eb)", () => setTheme(null)));
   };
   renderThemeItems();
@@ -766,9 +849,30 @@ export function buildInjectionScript(themes, activeId) {
   });
   panel.appendChild(uploadBtn);
   panel.appendChild(fileInput);
+
+  // —— 上传 .coskin 主题文件（导入别人分享的主题）——
+  const shareInput = D.createElement("input");
+  shareInput.type = "file";
+  shareInput.accept = ".json,.coskin,application/json";
+  shareInput.style.display = "none";
+  const IMPORT_LABEL = "↥ 上传 .coskin 主题文件";
+  const importBtn = makeItem(null, IMPORT_LABEL, null, () => shareInput.click());
+  shareInput.addEventListener("change", () => {
+    const f = shareInput.files && shareInput.files[0];
+    shareInput.value = "";
+    if (!f) return;
+    importBtn.textContent = "导入中…";
+    f.text()
+      .then((text) => { applyShareText(text); importBtn.textContent = "✓ 已导入并应用"; })
+      .catch((err) => { importBtn.textContent = "导入失败：" + (err && err.message || "文件不对"); })
+      .finally(() => { setTimeout(() => { importBtn.textContent = IMPORT_LABEL; }, 2400); });
+  });
+  panel.appendChild(importBtn);
+  panel.appendChild(shareInput);
+
   const hint = D.createElement("div");
   hint.className = "coskin-hint";
-  hint.textContent = "想看原图选「原图」；判错深浅点「外观」翻转。面板上传＝快捷槽（覆盖式）。";
+  hint.textContent = "每个主题右侧 ⇩ 可导出为 .coskin 文件分享；想看原图选「原图」，判错深浅点「外观」翻转。";
   panel.appendChild(hint);
 
   const fab = D.createElement("button");
