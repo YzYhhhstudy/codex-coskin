@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "neon",
+  "name": "赛博霓虹 Neon",
+  "appearance": "dark",
+  "palette": {
+    "accent": "#ff2e97",
+    "secondary": "#00e5ff",
+    "surfaceTint": "#140a2e",
+    "ink": "#eafcff"
+  },
+  "background": {
+    "css": "radial-gradient(1100px 720px at 88% -10%, rgba(255,46,151,0.35) 0%, rgba(255,46,151,0) 55%), radial-gradient(950px 680px at -6% 108%, rgba(0,229,255,0.30) 0%, rgba(0,229,255,0) 60%), radial-gradient(700px 520px at 60% 70%, rgba(150,60,255,0.22) 0%, rgba(150,60,255,0) 62%), linear-gradient(160deg, #0a0620 0%, #150a30 52%, #1e0b3a 100%)"
+  },
+  "decor": {
+    "brand": "赛博霓虹",
+    "tagline": "雨夜霓虹里写代码",
+    "sub": "把疯狂想法接进电网，看它发光。",
+    "quotes": ["霓虹不睡，代码也是。", "先让它亮起来。", "bug 是暗处的信号灯。", "深夜是最好的编译器。"]
+  }
+}
