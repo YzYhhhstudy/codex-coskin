@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "id": "sunset",
+  "name": "日落橙紫 Sunset",
+  "appearance": "dark",
+  "palette": {
+    "accent": "#ff7a3c",
+    "secondary": "#a24bd6",
+    "surfaceTint": "#2a1633",
+    "ink": "#ffe9dd"
+  },
+  "background": {
+    "css": "radial-gradient(1100px 720px at 84% -12%, rgba(255,122,60,0.34) 0%, rgba(255,122,60,0) 55%), radial-gradient(950px 700px at -4% 112%, rgba(162,75,214,0.30) 0%, rgba(162,75,214,0) 60%), linear-gradient(165deg, #1f1030 0%, #331a3a 46%, #52243a 100%)"
+  },
+  "decor": {
+    "brand": "日落",
+    "tagline": "在黄昏里收尾",
+    "sub": "橙紫交界处，把今天的代码温柔地合上。",
+    "quotes": ["日落前，合上最后一个 PR。", "橙归橙，紫归紫。", "该收工了。", "明天的太阳会重新编译。"]
+  }
+}
