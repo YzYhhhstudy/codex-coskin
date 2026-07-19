@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "id": "xiuxing",
+  "name": "正是修行时",
+  "appearance": "light",
+  "palette": {
+    "accent": "#9c3b28",
+    "secondary": "#b98a3f",
+    "surfaceTint": "#e6dcc8",
+    "ink": "#2e2822"
+  },
+  "background": {
+    "css": "radial-gradient(1200px 820px at 88% -10%, rgba(156,59,40,0.12) 0%, rgba(156,59,40,0) 55%), radial-gradient(1000px 720px at -8% 112%, rgba(185,138,63,0.14) 0%, rgba(185,138,63,0) 60%), radial-gradient(700px 520px at 50% 82%, rgba(46,40,34,0.08) 0%, rgba(46,40,34,0) 62%), repeating-linear-gradient(0deg, rgba(120,100,70,0.028) 0 2px, transparent 2px 5px), linear-gradient(165deg, #f2ead9 0%, #e6dcc8 52%, #ddd0b8 100%)"
+  },
+  "decor": {
+    "brand": "正是修行时",
+    "tagline": "酒色财气皆从良",
+    "sub": "穿过妄念，把疯狂想法写成可运行的代码。",
+    "quotes": ["酒是穿肠毒药。", "色是刮骨钢刀。", "财是惹祸根苗。", "气是雷楦火炮。", "正是修行时。"],
+    "cards": [
+      { "match": ["Explore and understand", "探索并理解"], "glyph": "酒", "lines": "探索并读懂代码\n清醒面对问题，不借麻醉逃避" },
+      { "match": ["Build a new feature", "构建新功能"], "glyph": "色", "lines": "构建新功能与工具\n忠于所需，不迷恋一时快感" },
+      { "match": ["Review code", "审查代码"], "glyph": "财", "lines": "审查代码提出修改\n舍得删减，不无节制地占有" },
+      { "match": ["Fix issues", "修复问题"], "glyph": "气", "lines": "修复问题与失败\n心平气和，不让情绪主导双手" }
+    ],
+    "subCards": [
+      { "match": ["learn how a feature works"], "glyph": "酒", "lines": "弄懂一个功能的来龙去脉\n看得明白，不靠感觉" },
+      { "match": ["implementation options"], "glyph": "酒", "lines": "探讨功能的实现选项\n清醒比较，不冲动上头" },
+      { "match": ["architectural approaches"], "glyph": "酒", "lines": "对比架构思路\n慢酌慢选，权衡利弊" },
+      { "match": ["document an API"], "glyph": "酒", "lines": "梳理并记录一个 API\n条理分明，如醒后复盘" },
+      { "match": ["Build a feature"], "glyph": "色", "lines": "构建一个功能\n为所需而造，不为炫技" },
+      { "match": ["Build UI changes"], "glyph": "色", "lines": "调整界面样式\n悦目而不惑心" },
+      { "match": ["Build a prototype"], "glyph": "色", "lines": "搭一个原型\n浅尝辄止，点到为止" },
+      { "match": ["Build an internal tool"], "glyph": "色", "lines": "做一个内部工具\n实用为先，不贪花哨" },
+      { "match": ["Review my changes"], "glyph": "财", "lines": "审查我的改动\n多退少补，账目分明" },
+      { "match": ["Review a pull request"], "glyph": "财", "lines": "审查一个 PR\n把关入库，不贪多收" },
+      { "match": ["test coverage"], "glyph": "财", "lines": "查补测试覆盖\n该有的一分不少" },
+      { "match": ["refactor my code"], "glyph": "财", "lines": "重构冗余代码\n舍得删减，轻装上阵" },
+      { "match": ["Fix a bug"], "glyph": "气", "lines": "修一个 bug\n心平气和，就事论事" },
+      { "match": ["failing tests"], "glyph": "气", "lines": "修挂掉的测试\n不迁怒于断言" },
+      { "match": ["failing CI"], "glyph": "气", "lines": "修失败的 CI\n红灯面前不上头" },
+      { "match": ["merge conflicts"], "glyph": "气", "lines": "解合并冲突\n各让一步，气顺码通" }
+    ]
+  }
+}
