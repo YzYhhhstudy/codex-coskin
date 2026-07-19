@@ -34,17 +34,33 @@ check("注入成功", ok === "coskin:ok", String(ok));
 const probe = await cdp.evaluate(PROBE_SCRIPT);
 check("当前主题 = xiuxing-src", probe?.active === "xiuxing-src", JSON.stringify(probe));
 
-console.log("[2] 面板 UI：可滚动列表 + 固定导出/删除操作条 + 上传按钮");
+console.log("[2] 面板 UI：默认收起列表 + 固定选择器/导出/删除 + 上传");
 const ui = await cdp.evaluate(`(() => ({
-  scrollable: getComputedStyle(document.querySelector("#coskin-ui .coskin-list")).overflowY === "auto",
+  listHidden: getComputedStyle(document.querySelector("#coskin-ui .coskin-list")).display === "none",
   hasExport: !!document.querySelector("#coskin-ui .coskin-act"),
   hasDel: !!document.querySelector("#coskin-ui .coskin-act-del"),
   label: (document.querySelector("#coskin-ui .coskin-act-label") || {}).textContent,
+  caret: (document.querySelector("#coskin-ui .coskin-caret") || {}).textContent,
   hasImport: [...document.querySelectorAll("#coskin-ui .coskin-item")].some((b) => b.textContent.includes(".coskin 主题文件")),
 }))()`);
-check("列表可滚动（上弹列表）", ui.scrollable === true, JSON.stringify(ui));
-check("有固定「导出/删除」操作条，且显示当前主题名", ui.hasExport && ui.hasDel && ui.label === "正是修行时", JSON.stringify(ui));
+check("主题列表默认收起", ui.listHidden === true && ui.caret === "▸", JSON.stringify(ui));
+check("选择器显示当前主题名 + 有导出/删除", ui.hasExport && ui.hasDel && ui.label === "正是修行时", JSON.stringify(ui));
 check("有「上传 .coskin 主题文件」按钮", ui.hasImport === true);
+const expand = await cdp.evaluate(`(() => { document.querySelector("#coskin-ui .coskin-sel").click(); return { open: getComputedStyle(document.querySelector("#coskin-ui .coskin-list")).display !== "none", caret: document.querySelector("#coskin-ui .coskin-caret").textContent }; })()`);
+check("点主题名展开列表（caret 变 ▾）", expand.open === true && expand.caret === "▾", JSON.stringify(expand));
+await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-sel").click()`); // 收回
+
+console.log("[2b] 语言跟随 Codex：切到英文重注入，UI 变英文");
+await cdp.evaluate(`document.documentElement.lang = "en"; "en"`);
+await cdp.evaluate(buildInjectionScript([srcEntry], "xiuxing-src"), { timeoutMs: 30000 });
+const en = await cdp.evaluate(`(() => ({
+  header: document.querySelector("#coskin-ui .coskin-head").textContent,
+  imp: [...document.querySelectorAll("#coskin-ui .coskin-item")].some((b) => b.textContent.includes("Import .coskin")),
+  bg: [...document.querySelectorAll("#coskin-ui .coskin-ctl-label")].map((x) => x.textContent),
+}))()`);
+check("英文模式：header/上传/控件标签为英文", en.header.includes("Skins") && en.imp && en.bg.includes("Backdrop"), JSON.stringify(en));
+await cdp.evaluate(`document.documentElement.lang = "zh-CN"; "zh"`);
+await cdp.evaluate(buildInjectionScript([srcEntry], "xiuxing-src"), { timeoutMs: 30000 });
 
 console.log("[3] 导出（悬浮窗 ⇩ 走的同一函数）→ 导入（悬浮窗上传走的同一函数）→ 再导出");
 const s1 = await cdp.evaluate(`window.__coskinBuildShare("xiuxing-src")`);

@@ -185,7 +185,13 @@ const PANEL_CSS = `
 #coskin-ui .coskin-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 4px; }
 #coskin-ui .coskin-list::-webkit-scrollbar-track { background: transparent; }
 #coskin-ui .coskin-actions { display: flex; align-items: center; gap: 6px; padding: 2px 4px; }
-#coskin-ui .coskin-act-label { flex: 1; min-width: 0; font-size: 11px; font-weight: 700; opacity: .62; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#coskin-ui .coskin-sel {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; border: none; background: transparent;
+  color: inherit; cursor: pointer; padding: 5px 6px; border-radius: 7px; text-align: left;
+}
+#coskin-ui .coskin-sel:hover { background: rgba(255,255,255,.10); }
+#coskin-ui .coskin-caret { flex: none; font-size: 9px; opacity: .55; }
+#coskin-ui .coskin-act-label { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #coskin-ui .coskin-act {
   flex: none; border: 1px solid rgba(255,255,255,.16); background: transparent; color: inherit;
   font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 7px; cursor: pointer;
@@ -276,6 +282,35 @@ export function buildInjectionScript(themes, activeId) {
   const SHARE_FORMAT = "coskin-theme";
   const D = document;
   const HIDDEN_KEY = "coskin.hidden.v1";
+  // 语言跟随 Codex（documentElement.lang），中文显示中文，否则英文
+  const LANG = String(D.documentElement.lang || navigator.language || "en").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+  const STR = {
+    zh: {
+      header: "COSKIN · 一键换肤", native: "官方原生", exportBtn: "⇩ 导出", delBtn: "🗑 删除",
+      delConfirm: "再点一次删除", noSel: "未选主题", selectTip: "点主题名展开 / 收起列表",
+      bg: "背景", raw: "原图", immersive: "沉浸", ambient: "氛围", subtle: "含蓄",
+      appearance: "外观", dark: "深", light: "浅", pet: "桌宠", on: "开", off: "关",
+      makeImg: "＋ 用图片做主题", uploadShare: "↥ 上传 .coskin 主题文件",
+      hint: "点顶部主题名展开列表；选中后底部「导出」分享成 .coskin、「删除」移出列表（内置为隐藏可恢复）。",
+      petDrag: "拖我去任何地方", processing: "处理中…", readFail: "读取失败，再试一次",
+      tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
+      importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
+      quotes: ["今天写点什么好？", "小步提交，常回滚。", "先让它跑起来，再让它漂亮。"],
+    },
+    en: {
+      header: "COSKIN · Skins", native: "Official Default", exportBtn: "⇩ Export", delBtn: "🗑 Delete",
+      delConfirm: "Click again to delete", noSel: "No theme", selectTip: "Click theme name to show / hide list",
+      bg: "Backdrop", raw: "Original", immersive: "Immersive", ambient: "Ambient", subtle: "Subtle",
+      appearance: "Mode", dark: "Dark", light: "Light", pet: "Pet", on: "On", off: "Off",
+      makeImg: "＋ Make theme from image", uploadShare: "↥ Import .coskin file",
+      hint: "Click the theme name up top to open the list; pick one, then Export it as .coskin or Delete it (built-ins are hidden, not removed).",
+      petDrag: "Drag me anywhere", processing: "Processing…", readFail: "Read failed, try again",
+      tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
+      importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
+      quotes: ["What shall we build today?", "Small commits, easy rollbacks.", "Make it work, then make it pretty."],
+    },
+  };
+  const tr = (k) => (STR[LANG] && STR[LANG][k] != null ? STR[LANG][k] : STR.en[k]);
   const loadImported = () => {
     try { const a = JSON.parse(localStorage.getItem(IMPORT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
     catch { return []; }
@@ -669,9 +704,7 @@ export function buildInjectionScript(themes, activeId) {
       brand.querySelector(".cs-brand-sub").textContent = ov.tagline ?? (decor.tagline || "CoSkin Edition");
     }
     for (const plate of D.querySelectorAll(".cs-hero-plate")) stylePlate(plate, t, colors);
-    state.quotes = Array.isArray(decor.quotes) && decor.quotes.length
-      ? decor.quotes
-      : ["今天写点什么好？", "小步提交，常回滚。", "先让它跑起来，再让它漂亮。"];
+    state.quotes = Array.isArray(decor.quotes) && decor.quotes.length ? decor.quotes : tr("quotes");
     state.quoteIdx = 0;
     const bubble = pet && pet.querySelector(".cs-pet-bubble");
     if (bubble) { bubble.textContent = state.quotes[0]; bubble.style.opacity = "1"; }
@@ -697,13 +730,14 @@ export function buildInjectionScript(themes, activeId) {
   ensureStyle("coskin-ui-style", ${JSON.stringify(PANEL_CSS)});
   const ui = D.createElement("div"); ui.id = "coskin-ui";
   const panel = D.createElement("div"); panel.className = "coskin-panel";
-  const head = D.createElement("div"); head.className = "coskin-head"; head.textContent = "COSKIN · 一键换肤";
+  const head = D.createElement("div"); head.className = "coskin-head"; head.textContent = tr("header");
   panel.appendChild(head);
+  // 主题列表：默认收起，点顶部当前主题名才展开
   const items = D.createElement("div");
-  items.style.display = "flex"; items.style.flexDirection = "column"; items.style.gap = "4px";
+  items.style.flexDirection = "column"; items.style.gap = "4px";
   items.style.maxHeight = "244px"; items.style.overflowY = "auto"; items.style.overflowX = "hidden";
+  items.style.display = "none";
   items.className = "coskin-list";
-  panel.appendChild(items);
 
   const makeItem = (key, label, swatch, onClick) => {
     const b = D.createElement("button");
@@ -784,42 +818,47 @@ export function buildInjectionScript(themes, activeId) {
   };
   window.__coskinDeleteTheme = deleteTheme;
 
+  // 折叠：点当前主题名展开 / 收起列表；选中一个主题后自动收起
+  let listOpen = false;
+  const setListOpen = (v) => { listOpen = v; items.style.display = v ? "flex" : "none"; if (caret) caret.textContent = v ? "▾" : "▸"; };
   const renderThemeItems = () => {
     items.textContent = "";
-    for (const t of THEMES) items.appendChild(makeItem(t.id, t.name, t.accent, () => setTheme(t.id)));
-    items.appendChild(makeItem("__native__", "官方原生", "linear-gradient(135deg,#8a8f98,#e5e7eb)", () => setTheme(null)));
+    for (const th of THEMES) items.appendChild(makeItem(th.id, th.name, th.accent, () => { setTheme(th.id); setListOpen(false); }));
+    items.appendChild(makeItem("__native__", tr("native"), "linear-gradient(135deg,#8a8f98,#e5e7eb)", () => { setTheme(null); setListOpen(false); }));
   };
   renderThemeItems();
 
-  // —— 固定操作条：对「当前选中主题」导出 / 删除 ——
-  panel.appendChild(Object.assign(D.createElement("div"), { className: "coskin-div" }));
+  // —— 顶部当前主题选择器（点名字展开列表）+ 固定导出/删除 ——
   const actionRow = D.createElement("div"); actionRow.className = "coskin-actions";
+  const nameBtn = D.createElement("button"); nameBtn.className = "coskin-sel"; nameBtn.title = tr("selectTip");
+  const caret = D.createElement("span"); caret.className = "coskin-caret"; caret.textContent = "▸";
   const actLabel = D.createElement("span"); actLabel.className = "coskin-act-label";
-  const expBtn = D.createElement("button"); expBtn.className = "coskin-act"; expBtn.textContent = "⇩ 导出";
-  const delBtn = D.createElement("button"); delBtn.className = "coskin-act coskin-act-del"; delBtn.textContent = "🗑 删除";
-  const DEL_LABEL = "🗑 删除";
+  nameBtn.appendChild(caret); nameBtn.appendChild(actLabel);
+  nameBtn.addEventListener("click", () => setListOpen(!listOpen));
+  const expBtn = D.createElement("button"); expBtn.className = "coskin-act"; expBtn.textContent = tr("exportBtn");
+  const delBtn = D.createElement("button"); delBtn.className = "coskin-act coskin-act-del"; delBtn.textContent = tr("delBtn");
   let delArmed = null;
   const updateActionBar = () => {
     const id = window.__coskinActive;
-    const t = id ? THEMES.find((x) => x.id === id) : null;
-    actLabel.textContent = t ? t.name : "未选主题";
-    expBtn.disabled = !t; delBtn.disabled = !t;
-    delBtn.textContent = DEL_LABEL; delArmed = null;
+    const th = id ? THEMES.find((x) => x.id === id) : null;
+    actLabel.textContent = th ? th.name : tr("noSel");
+    expBtn.disabled = !th; delBtn.disabled = !th;
+    delBtn.textContent = tr("delBtn"); delArmed = null;
   };
   window.__coskinSyncActions = updateActionBar;
   expBtn.addEventListener("click", () => {
-    const t = THEMES.find((x) => x.id === window.__coskinActive);
-    if (t) triggerExport(t);
+    const th = THEMES.find((x) => x.id === window.__coskinActive);
+    if (th) triggerExport(th);
   });
   delBtn.addEventListener("click", () => {
     const id = window.__coskinActive;
     if (!id) return;
-    if (delArmed !== id) { delArmed = id; delBtn.textContent = "再点一次删除"; setTimeout(() => { if (delArmed === id) updateActionBar(); }, 2600); return; }
-    const r = deleteTheme(id); // deleteTheme 内部会刷新 action bar
-    // updateActionBar 已在 deleteTheme 里触发
+    if (delArmed !== id) { delArmed = id; delBtn.textContent = tr("delConfirm"); setTimeout(() => { if (delArmed === id) updateActionBar(); }, 2600); return; }
+    deleteTheme(id);
   });
-  actionRow.appendChild(actLabel); actionRow.appendChild(expBtn); actionRow.appendChild(delBtn);
+  actionRow.appendChild(nameBtn); actionRow.appendChild(expBtn); actionRow.appendChild(delBtn);
   panel.appendChild(actionRow);
+  panel.appendChild(items); // 列表紧跟在选择器下方（默认收起）
 
   // —— B/A 级现场调节：背景可见度 + 深浅翻转 ——
   panel.appendChild(Object.assign(D.createElement("div"), { className: "coskin-div" }));
@@ -835,16 +874,16 @@ export function buildInjectionScript(themes, activeId) {
     }
     panel.appendChild(row);
   };
-  mkCtl("背景", [["raw", "原图"], ["immersive", "沉浸"], ["ambient", "氛围"], ["subtle", "含蓄"]], "data-coskin-vis", (v) => {
+  mkCtl(tr("bg"), [["raw", tr("raw")], ["immersive", tr("immersive")], ["ambient", tr("ambient")], ["subtle", tr("subtle")]], "data-coskin-vis", (v) => {
     state.vis = v;
     if (window.__coskinActive) setTheme(window.__coskinActive, true); else refreshCtls();
   });
-  mkCtl("外观", [["dark", "深"], ["light", "浅"]], "data-coskin-app", (v) => {
+  mkCtl(tr("appearance"), [["dark", tr("dark")], ["light", tr("light")]], "data-coskin-app", (v) => {
     if (!window.__coskinActive) return;
     state.appOverride = v;
     setTheme(window.__coskinActive, true);
   });
-  mkCtl("桌宠", [["on", "开"], ["off", "关"]], "data-coskin-pet", (v) => {
+  mkCtl(tr("pet"), [["on", tr("on")], ["off", tr("off")]], "data-coskin-pet", (v) => {
     state.petOn = v === "on";
     try { localStorage.setItem("coskin.pet.v1", v); } catch {}
     updateDecorVisibility();
@@ -884,19 +923,19 @@ export function buildInjectionScript(themes, activeId) {
   fileInput.type = "file";
   fileInput.accept = "image/png,image/jpeg,image/webp";
   fileInput.style.display = "none";
-  const UPLOAD_LABEL = "＋ 用图片做主题";
+  const UPLOAD_LABEL = tr("makeImg");
   const uploadBtn = makeItem(null, UPLOAD_LABEL, null, () => fileInput.click());
   fileInput.addEventListener("change", () => {
     const f = fileInput.files && fileInput.files[0];
     fileInput.value = "";
     if (!f) return;
-    uploadBtn.textContent = "处理中…";
+    uploadBtn.textContent = tr("processing");
     const reader = new FileReader();
-    reader.onerror = () => { uploadBtn.textContent = "读取失败，再试一次"; setTimeout(() => { uploadBtn.textContent = UPLOAD_LABEL; }, 1800); };
+    reader.onerror = () => { uploadBtn.textContent = tr("readFail"); setTimeout(() => { uploadBtn.textContent = UPLOAD_LABEL; }, 1800); };
     reader.onload = () => {
       quickFromDataUrl(String(reader.result), f.name.replace(/\\.[^.]+$/, ""))
-        .then((r) => { uploadBtn.textContent = r === "coskin:quick-saved" ? UPLOAD_LABEL : "已应用（图太大没存进快捷槽）"; })
-        .catch(() => { uploadBtn.textContent = "失败了，换张图试试"; })
+        .then((r) => { uploadBtn.textContent = r === "coskin:quick-saved" ? UPLOAD_LABEL : tr("tooBig"); })
+        .catch(() => { uploadBtn.textContent = tr("imgFail"); })
         .finally(() => { setTimeout(() => { uploadBtn.textContent = UPLOAD_LABEL; }, 2200); });
     };
     reader.readAsDataURL(f);
@@ -909,16 +948,16 @@ export function buildInjectionScript(themes, activeId) {
   shareInput.type = "file";
   shareInput.accept = ".json,.coskin,application/json";
   shareInput.style.display = "none";
-  const IMPORT_LABEL = "↥ 上传 .coskin 主题文件";
+  const IMPORT_LABEL = tr("uploadShare");
   const importBtn = makeItem(null, IMPORT_LABEL, null, () => shareInput.click());
   shareInput.addEventListener("change", () => {
     const f = shareInput.files && shareInput.files[0];
     shareInput.value = "";
     if (!f) return;
-    importBtn.textContent = "导入中…";
+    importBtn.textContent = tr("importing");
     f.text()
-      .then((text) => { applyShareText(text); importBtn.textContent = "✓ 已导入并应用"; })
-      .catch((err) => { importBtn.textContent = "导入失败：" + (err && err.message || "文件不对"); })
+      .then((text) => { applyShareText(text); importBtn.textContent = tr("importOk"); })
+      .catch((err) => { importBtn.textContent = tr("importFail") + (err && err.message || tr("badFile")); })
       .finally(() => { setTimeout(() => { importBtn.textContent = IMPORT_LABEL; }, 2400); });
   });
   panel.appendChild(importBtn);
@@ -926,14 +965,20 @@ export function buildInjectionScript(themes, activeId) {
 
   const hint = D.createElement("div");
   hint.className = "coskin-hint";
-  hint.textContent = "选中主题后，底部「⇩ 导出」分享成 .coskin 文件、「🗑 删除」从列表移除（内置为隐藏可恢复）。";
+  hint.textContent = tr("hint");
   panel.appendChild(hint);
 
   const fab = D.createElement("button");
-  fab.className = "coskin-fab"; fab.textContent = "🎨"; fab.title = "CoSkin 换肤";
+  fab.className = "coskin-fab"; fab.textContent = "🎨"; fab.title = tr("header");
   fab.addEventListener("click", () => panel.classList.toggle("coskin-open"));
   ui.appendChild(panel); ui.appendChild(fab);
   D.documentElement.appendChild(ui);
+  // 点面板外的任何地方自动收起（重注入前先清掉旧监听，避免累积）
+  if (window.__coskinOutsideClick) D.removeEventListener("mousedown", window.__coskinOutsideClick);
+  window.__coskinOutsideClick = (e) => {
+    if (panel.classList.contains("coskin-open") && !ui.contains(e.target)) panel.classList.remove("coskin-open");
+  };
+  D.addEventListener("mousedown", window.__coskinOutsideClick);
 
   // 品牌行与桌宠的 DOM（装饰层不挡操作；桌宠身体例外——它要能被拖走）
   D.getElementById("coskin-stage")?.remove();
@@ -974,7 +1019,7 @@ export function buildInjectionScript(themes, activeId) {
   const pet = D.createElement("div"); pet.id = "coskin-pet";
   const bubble = Object.assign(D.createElement("div"), { className: "cs-pet-bubble" });
   const body = Object.assign(D.createElement("div"), { className: "cs-pet-body" });
-  body.title = "拖我去任何地方";
+  body.title = tr("petDrag");
   for (const cls of ["cs-pet-eye l", "cs-pet-eye r", "cs-pet-cheek l", "cs-pet-cheek r"]) {
     body.appendChild(Object.assign(D.createElement("span"), { className: cls }));
   }
@@ -1030,6 +1075,7 @@ export function buildInjectionScript(themes, activeId) {
 
 export const RESTORE_SCRIPT = `(() => {
   if (window.__coskinTimers) { for (const t of window.__coskinTimers) clearInterval(t); delete window.__coskinTimers; }
+  if (window.__coskinOutsideClick) { document.removeEventListener("mousedown", window.__coskinOutsideClick); delete window.__coskinOutsideClick; }
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;
