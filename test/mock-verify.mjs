@@ -220,6 +220,12 @@ check("原图档主区完全透明", rawMain.bg === "rgba(0, 0, 0, 0)" && rawMai
 await new Promise((r2) => setTimeout(r2, 1400));
 check("原图档零遮挡：板子已撤", (await cdp.evaluate(`!document.querySelector(".cs-hero-plate")`)) === true);
 check("原图档卡片无模糊（水玻璃）", (await cdp.evaluate(`getComputedStyle(document.querySelector('[class*="home-suggestions"] button')).backdropFilter`)) === "none");
+const rawGlass = await cdp.evaluate(`(() => ({
+  side: getComputedStyle(document.querySelector(".app-shell-left-panel")).backdropFilter,
+  comp: getComputedStyle(document.querySelector(".composer-surface-chrome")).backdropFilter,
+}))()`);
+check("原图档侧栏无模糊（纯水玻璃）", !/blur/.test(rawGlass.side), rawGlass.side);
+check("原图档对话框无模糊（纯水玻璃）", !/blur/.test(rawGlass.comp), rawGlass.comp);
 check("原图档无 cards 配置的主题不做加宽（快捷槽保持官方布局）", (await cdp.evaluate(`!document.querySelector("[data-cs-cards]")`)) === true);
 await cdp.evaluate(`document.querySelector('[data-coskin-theme="xuanzhi"]').click(); "sw"`);
 await new Promise((r2) => setTimeout(r2, 300));
@@ -230,6 +236,7 @@ await shot("05r-raw");
 await cdp.evaluate(`document.querySelector('[data-coskin-vis="ambient"]').click(); "clicked"`);
 await new Promise((r2) => setTimeout(r2, 1400));
 check("回到氛围档板子复位", (await cdp.evaluate(`!!document.querySelector(".cs-hero-plate")`)) === true);
+check("氛围档侧栏恢复毛玻璃（有模糊）", /blur/.test(await cdp.evaluate(`getComputedStyle(document.querySelector(".app-shell-left-panel")).backdropFilter`)));
 check("氛围档卡片行加宽标记复位", (await cdp.evaluate(`!!document.querySelector("[data-cs-cards]")`)) === true);
 check("图片主题板右侧有人物裁切条", (await cdp.evaluate(`!!document.querySelector(".cs-hero-plate .cs-hero-art")`)) === true);
 

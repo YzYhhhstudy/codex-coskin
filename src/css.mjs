@@ -40,6 +40,9 @@ export function coskinBuildCss(theme, backgroundLayers) {
   const bareTextShadow = alpha.veil <= 0.08
     ? "main.main-surface { text-shadow: 0 1px 4px " + colors.surface + "b3; }\n"
     : "";
+  // 原图档=纯水玻璃：只留半透明色，去掉毛玻璃模糊（越透明越透出原画）
+  const rawMode = alpha.veil === 0;
+  const glass = (px, sat) => rawMode ? "  backdrop-filter: saturate(" + sat + ");\n" : "  backdrop-filter: blur(" + px + "px) saturate(" + sat + ");\n";
 
   let varBlock = "";
   for (const name in vars) varBlock += "  " + name + ": " + vars[name] + " !important;\n";
@@ -62,7 +65,7 @@ varBlock +
 "aside.app-shell-left-panel {\n" +
 "  background: " + colors.surface + a2hex(alpha.side) + " !important;\n" +
 "  border-right: 1px solid " + colors.accent + a2hex(Math.min(0.4, alpha.line + 0.08)) + " !important;\n" +
-"  backdrop-filter: blur(18px) saturate(1.1);\n" +
+glass(18, 1.1) +
 "}\n" +
 "main.main-surface, .browser-main-surface {\n" +
 mainWash +
@@ -75,7 +78,7 @@ bareTextShadow +
 "  border: 1px solid " + colors.accent + a2hex(Math.min(0.22, alpha.line * 0.8)) + " !important;\n" +
 "  border-radius: " + (radius + 2) + "px !important;\n" +
 "  box-shadow: 0 6px 22px " + colors.surfaceDeep + "26 !important;\n" +
-"  backdrop-filter: blur(16px) saturate(1.06);\n" +
+glass(16, 1.06) +
 "}\n" +
 ".composer-surface-chrome, [data-user-message-bubble], [data-codex-approval-surface] {\n" +
 "  color: " + colors.text + " !important;\n" +
@@ -83,7 +86,7 @@ bareTextShadow +
 "  border-radius: " + (radius + 4) + "px !important;\n" +
 "  background: " + colors.surfaceRaised + a2hex(alpha.input) + " !important;\n" +
 "  box-shadow: 0 8px 24px " + colors.surfaceDeep + "1f, inset 0 1px " + colors.text + "0f !important;\n" +
-"  backdrop-filter: blur(20px) saturate(1.08);\n" +
+glass(20, 1.08) +
 "}\n" +
 "[data-app-action-sidebar-thread-active=\"true\"] {\n" +
 "  background: linear-gradient(90deg, " + colors.accent + "38, " + colors.secondary + "22) !important;\n" +
