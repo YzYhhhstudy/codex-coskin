@@ -1142,18 +1142,29 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     reader.readAsDataURL(f);
   });
   // 桌宠拖拽：抓身体，全屏clamp，位置进 localStorage
+  let petPos = null; // 最近位置（null=用 CSS 默认右下角锚点，天然自适应）
   const placePet = (x, y) => {
-    x = Math.max(8, Math.min(innerWidth - 60, x));
-    y = Math.max(8, Math.min(innerHeight - 60, y));
+    x = Math.max(8, Math.min(innerWidth - 56, x));
+    y = Math.max(8, Math.min(innerHeight - 56, y));
     pet.style.left = x + "px"; pet.style.top = y + "px";
     pet.style.right = "auto"; pet.style.bottom = "auto";
     pet.classList.toggle("cs-flip", x < 250);
-    return { x: x, y: y };
+    petPos = { x: x, y: y };
+    return petPos;
   };
+  window.__coskinPlacePet = placePet; // 测试用
   try {
     const saved = JSON.parse(localStorage.getItem("coskin.pet.pos.v1") || "null");
     if (saved && typeof saved.x === "number") placePet(saved.x, saved.y);
   } catch {}
+  // 窗口缩放时把拖过的桌宠重新夹回可见范围（否则绝对坐标会落到窗口外→"消失"）
+  if (window.__coskinPetResize) window.removeEventListener("resize", window.__coskinPetResize);
+  window.__coskinPetResize = () => {
+    if (!petPos) return; // 没拖过=CSS 右下角锚点，自适应，不用管
+    placePet(petPos.x, petPos.y);
+    try { localStorage.setItem("coskin.pet.pos.v1", JSON.stringify(petPos)); } catch {}
+  };
+  window.addEventListener("resize", window.__coskinPetResize);
   body.addEventListener("mousedown", (e) => {
     e.preventDefault();
     const bodyRect = body.getBoundingClientRect();
@@ -1234,6 +1245,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
 export const RESTORE_SCRIPT = `(() => {
   if (window.__coskinTimers) { for (const t of window.__coskinTimers) clearInterval(t); delete window.__coskinTimers; }
   if (window.__coskinOutsideClick) { document.removeEventListener("mousedown", window.__coskinOutsideClick); delete window.__coskinOutsideClick; }
+  if (window.__coskinPetResize) { window.removeEventListener("resize", window.__coskinPetResize); delete window.__coskinPetResize; }
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;

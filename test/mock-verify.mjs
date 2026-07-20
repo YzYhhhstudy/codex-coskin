@@ -172,6 +172,15 @@ check("换形象快照存进 localStorage", (await cdp.evaluate(`!!localStorage.
 await cdp.evaluate(`window.__coskinClearPetImage(); "clear"`);
 check("恢复默认→无 cs-pet-custom、快照已清", (await cdp.evaluate(`!document.querySelector("#coskin-pet .cs-pet-body").classList.contains("cs-pet-custom") && !localStorage.getItem("coskin.pet.image.v1")`)) === true);
 
+console.log("\n[1e] 桌宠随窗口缩放自适配（不会跑到窗口外消失）");
+await cdp.evaluate(`window.__coskinPlacePet(1400, 820); "far"`); // 放到大窗口右下
+await cdp.send("Emulation.setDeviceMetricsOverride", { width: 700, height: 500, deviceScaleFactor: 1, mobile: false }, { timeoutMs: 8000 });
+await cdp.evaluate(`window.dispatchEvent(new Event("resize")); "resized"`);
+const petAfter = await cdp.evaluate(`(() => { const p = document.getElementById("coskin-pet"); return { left: parseInt(p.style.left), top: parseInt(p.style.top), w: innerWidth, h: innerHeight }; })()`);
+check("窗口缩小后桌宠被夹回可见范围内", petAfter.left <= petAfter.w - 56 && petAfter.top <= petAfter.h - 56 && petAfter.left >= 8, JSON.stringify(petAfter));
+await cdp.send("Emulation.clearDeviceMetricsOverride", {}, { timeoutMs: 8000 });
+await cdp.evaluate(`window.dispatchEvent(new Event("resize")); localStorage.removeItem("coskin.pet.pos.v1"); "reset"`);
+
 console.log("\n[2] 打开 🎨 面板（含可见度/外观控件）");
 await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-fab").click(); "clicked"`);
 check("面板展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-panel").classList.contains("coskin-open")`)) === true);
