@@ -357,6 +357,8 @@ check("重注入成功", reinject === "coskin:ok", String(reinject));
 check("快捷槽恢复进面板", (await cdp.evaluate(`!!document.querySelector('[data-coskin-theme="quick"]')`)) === true);
 
 console.log("\n[6] 还原官方界面：控件采样逐项回基线");
+// 债①：还原前先抓住闭包引用，验证还原后即便被在途回调触达也不复活皮肤（代际门）
+await cdp.evaluate(`window.__coskinStaleSetTheme = window.__coskinSetTheme; "captured"`);
 const restored = await cdp.evaluate(RESTORE_SCRIPT);
 check("还原返回 coskin:restored", restored === "coskin:restored", String(restored));
 s = await cdp.evaluate(SAMPLE);
@@ -368,7 +370,10 @@ check("主按钮回到基线", s.btnBg === baseline.btnBg, s.btnBg);
 probe = await cdp.evaluate(PROBE_SCRIPT);
 check("无皮肤、无面板", probe?.active === null && probe?.hasUi === false, JSON.stringify(probe));
 check("品牌行/标题板/桌宠已拆除、定时器已清", (await cdp.evaluate(`!document.getElementById("coskin-brand") && !document.getElementById("coskin-pet") && !document.querySelector(".cs-hero-plate") && window.__coskinTimers === undefined`)) === true);
-check("缩放全局闭包已清（__coskinPetScale/__coskinPanelScale）", (await cdp.evaluate(`window.__coskinPetScale === undefined && window.__coskinPanelScale === undefined`)) === true);
+check("注入期闭包全部清除（setTheme/quickFromDataUrl/applyShare/state/缩放…）", (await cdp.evaluate(`["__coskinSetTheme","__coskinQuickFromDataUrl","__coskinApplyShare","__coskinBuildShare","__coskinDeleteTheme","__coskinSyncActions","__coskinSetPetImage","__coskinClearPetImage","__coskinState","__coskinPetScale","__coskinPanelScale","__coskinPlacePet","__coskinPetTick"].every((k) => window[k] === undefined)`)) === true);
+const revive = await cdp.evaluate(`(() => { try { window.__coskinStaleSetTheme && window.__coskinStaleSetTheme("nebula"); } catch {} return !!document.getElementById("coskin-style"); })()`);
+check("还原后旧闭包被触达也不复活皮肤（代际门挡下）", revive === false);
+await cdp.evaluate(`delete window.__coskinStaleSetTheme; "clean"`);
 const colResidue = await cdp.evaluate(`(() => { const c = document.querySelector(".home-col"); return c.style.position + "|" + c.style.isolation + "|" + (c.dataset.csCol ?? ""); })()`);
 check("标题列内联样式残留已清（position/isolation/标记）", colResidue === "||", colResidue);
 check("标题接管样式已还原", (await cdp.evaluate(`!document.querySelector("[data-cs-titled]")`)) === true);

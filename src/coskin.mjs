@@ -109,7 +109,8 @@ async function loadAllThemes() {
   return [...(await loadBuiltinThemes()), ...(await loadCustomThemes())];
 }
 
-async function imageDataUrl(path) {
+// 图片校验统一入口：后缀 + 非空 + ≤8MB。--image / --spec 的壁纸都走这里，避免某条路漏检。
+async function assertImageFile(path) {
   const ext = extname(path).toLowerCase();
   if (!IMAGE_EXT.has(ext)) throw new Error(`只支持 PNG / JPG / JPEG / WebP，收到：${ext || "无后缀"}`);
   const info = await stat(path);
@@ -117,6 +118,11 @@ async function imageDataUrl(path) {
   if (info.size > MAX_IMAGE_BYTES) {
     throw new Error(`图片 ${(info.size / 1024 / 1024).toFixed(1)}MB 超过 8MB 上限，请先压缩一下。`);
   }
+  return ext;
+}
+
+async function imageDataUrl(path) {
+  const ext = await assertImageFile(path);
   const bytes = await readFile(path);
   return `data:${MIME[ext]};base64,${bytes.toString("base64")}`;
 }
@@ -201,7 +207,18 @@ async function injectEverywhere(port, script) {
     const hint = failed[0]?.error?.message ?? "没找到带 #root 的 Codex 窗口";
     throw new Error(`注入失败：${hint}`);
   }
-  return { applied: applied.length, failed: failed.length };
+  return {
+    applied: applied.length,
+    failed: failed.length,
+    failures: failed.map((r) => ({ url: r.target?.url, message: r.error?.message ?? "未知错误" })),
+  };
+}
+
+// 多窗口部分失败别静默：其余窗口成功了，但失败的要如实报出来，否则「✅ 已应用」会误导。
+function warnPartialFailure(action, failed, failures) {
+  if (!failed) return;
+  log(`⚠️ 另有 ${failed} 个窗口${action}失败（上面成功的已生效）：`);
+  for (const f of failures ?? []) log(`   · ${f.url ?? "未知窗口"} —— ${f.message}`);
 }
 
 async function applyTheme(port, themeId, confirmRestart = null) {
@@ -214,9 +231,10 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   log(`正在应用主题「${theme.name}」…`);
   const payload = await switcherPayload(theme);
   const updateInfo = await getUpdateInfo();
-  const { applied } = await injectEverywhere(port, buildInjectionScript(payload, theme.id, updateInfo));
+  const { applied, failed, failures } = await injectEverywhere(port, buildInjectionScript(payload, theme.id, updateInfo));
   await rememberTheme(theme.id);
   log(`✅ 已应用「${theme.name}」（${applied} 个窗口）。右下角 🎨 按钮可随时一键切换或还原。`);
+  warnPartialFailure("应用", failed, failures);
   if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「更新.command」一键升级。`);
   return theme;
 }
@@ -273,9 +291,11 @@ async function restore(port) {
     log("Codex 没在调试模式下运行 —— 皮肤本来就只在这种会话里存在，现在已是官方原生界面。");
     return;
   }
-  await injectEverywhere(port, RESTORE_SCRIPT).catch((error) => {
+  const res = await injectEverywhere(port, RESTORE_SCRIPT).catch((error) => {
     log(`还原时没找到注入痕迹（${error.message}），界面应已是原生状态。`);
+    return null;
   });
+  if (res) warnPartialFailure("还原", res.failed, res.failures);
   log("✅ 已还原官方界面（下次正常启动 Codex 也不会带任何皮肤）。");
 }
 
@@ -343,8 +363,7 @@ async function createThemeFromSpec(specPath) {
   const theme = { schemaVersion: 2, id, name, appearance, palette };
   if (typeof raw.wallpaper === "string" && raw.wallpaper.trim()) {
     const wp = resolve(cleanDraggedPath(raw.wallpaper));
-    const ext = extname(wp).toLowerCase();
-    if (!IMAGE_EXT.has(ext)) throw new Error(`wallpaper 只支持 PNG / JPG / WebP，收到：${ext}`);
+    const ext = await assertImageFile(wp); // 与 --image 同一套校验：后缀 + 非空 + ≤8MB
     theme.backgroundFile = `bg${ext}`;
     await copyFile(wp, join(dir, theme.backgroundFile));
   } else if (raw.background?.css && typeof raw.background.css === "string") {

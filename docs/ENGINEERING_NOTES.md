@@ -120,13 +120,13 @@
 | --- | --- |
 | ① 可读性工程 | ✅ 最扎实卖点：对比度兜底 / 纸色守卫 / 可见度四档（含原图纯水玻璃）/ 阅读面板特权 |
 | ② 分发闭环 | ✅ `.coskin` 单文件 + CLI/面板 导出导入删除 + Codex skill 自动安装 + 一键更新 |
-| ③ 跨工具 | ⏳ 未动工。已探明 **Claude Desktop 是 Electron、可 CDP 注入**（见 PLATFORM-PLAN）；定位级机会 |
+| ③ 跨工具 | ⏳ 未动工。已探明 **Claude Desktop 加固、CDP 端口打不开**（`open --args`/直调二进制都没监听、无 DevTools 日志）→ 现有机制走不通；真正务实目标是 **Cursor/Windsurf/Kiro 等 VS Code(Electron) 分支**（CDP 注入 or VS Code 扩展加载 CSS） |
 | ④ 会动的皮肤 | 🌱 桌宠：主题驱动 + 可拖 + 状态感知(working/done) + 自定义形象 + 连续缩放(滑块 0.7–2.6×)；悬浮窗也可等比缩放(0.85–1.6×)。**下一步接真机 error DOM**（出错变色） |
 
-## 已知待办（多智能体审查遗留，仍未修）
+## 审查遗留三债（v0.26.1 已还清）
 
-- RESTORE 后 `window.__coskinSetTheme` / `__coskinQuickFromDataUrl` / `__coskinState` 等全局闭包仍存活：
-  ① 在途图片上传落定会「复活」皮肤（还原后 1-2 秒竞态）；② 闭包持有含 base64 壁纸的 THEMES，每窗口滞留数 MB。
-  修法：RESTORE 里 delete 这些全局 + 注入代际标记拒绝过期回调。
-- 多窗口 apply/restore 的部分失败被静默吞（`failed` 计数无人消费），成功提示可能误导。
-- `apply --spec` 的 wallpaper 分支只查扩展名不查 8MB/空文件（面板/CLI import 已查；spec 路径漏）。
+- ✅ **RESTORE 复活竞态 + 闭包滞留**：注入端加**代际标记** `window.__coskinGen`（每次注入/还原自增），
+  `setTheme` 开头 `if (__coskinGen !== __GEN) return` 一道门挡下所有过期回调（图片上传/导入 `.coskin` 落定即便触达也不复活）；
+  RESTORE 里 `delete` 掉全部注入期闭包（`__coskinSetTheme`/`__coskinQuickFromDataUrl`/`__coskinState`…），释放含 base64 壁纸的 THEMES。
+- ✅ **多窗口部分失败不再静默**：`injectEverywhere` 回传 `failures[]`，`applyTheme`/`restore` 用 `warnPartialFailure` 逐窗口报告（成功的照常生效）。
+- ✅ **`apply --spec` 壁纸校验补齐**：抽出 `assertImageFile`（后缀+非空+≤8MB），`--image` 与 `--spec` 共用，spec 路径不再漏检。

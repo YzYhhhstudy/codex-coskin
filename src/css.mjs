@@ -392,6 +392,10 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   ${coskinBuildCss.toString()}
 
   const state = window.__coskinState = window.__coskinState || { vis: "ambient", appOverride: null };
+  // 代际标记：每次注入/还原都自增。在途异步回调（图片上传、导入 .coskin）据此判「过期」，
+  // 还原后即便旧闭包被 setTheme 触发也会被这道门挡下，杜绝「已还原却被复活」的竞态。
+  window.__coskinGen = (window.__coskinGen || 0) + 1;
+  const __GEN = window.__coskinGen;
   let petOn = "on";
   try { petOn = localStorage.getItem("coskin.pet.v1") || "on"; } catch {}
   state.petOn = petOn !== "off";
@@ -422,6 +426,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   };
   // 页面内现场编译：可见度/深浅即点即变
   const setTheme = (id, keepOverride) => {
+    if (window.__coskinGen !== __GEN) return; // 代际过期（已还原/已被重注入）：拒绝复活皮肤
     const t = THEMES.find((t) => t.id === id) ?? null;
     if (!keepOverride) state.appOverride = null;
     if (!t) { D.getElementById("coskin-style")?.remove(); syncShell(null); }
@@ -987,6 +992,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const spec = { palette: { accent: p.accent, secondary: p.secondary, surfaceTint: p.dominant } };
     const bg = "url(" + JSON.stringify(url) + ") center center / cover no-repeat fixed";
     const entry = { id: "quick", name: name || "我的图片", accent: p.accent, appearance: appearance, spec: spec, bg: bg };
+    if (window.__coskinGen !== __GEN) return "coskin:stale"; // 上传落定时皮肤已被还原/重注入：丢弃，不复活
     let saved = true;
     try { localStorage.setItem(QUICK_KEY, JSON.stringify(entry)); } catch { saved = false; }
     const i = THEMES.findIndex((t) => t.id === "quick");
@@ -1291,7 +1297,13 @@ export const RESTORE_SCRIPT = `(() => {
   if (window.__coskinTimers) { for (const t of window.__coskinTimers) clearInterval(t); delete window.__coskinTimers; }
   if (window.__coskinOutsideClick) { document.removeEventListener("mousedown", window.__coskinOutsideClick); delete window.__coskinOutsideClick; }
   if (window.__coskinPetResize) { window.removeEventListener("resize", window.__coskinPetResize); delete window.__coskinPetResize; }
-  delete window.__coskinPetScale; delete window.__coskinPanelScale;
+  // 代际自增：让任何在途异步回调（图片上传/导入）落定时判为过期，setTheme 直接被挡（不复活皮肤）
+  window.__coskinGen = (window.__coskinGen || 0) + 1;
+  // 删掉所有注入期闭包：它们持有含 base64 壁纸的 THEMES，不清则每窗口滞留数 MB，且可被在途回调触达
+  for (const k of ["__coskinSetTheme", "__coskinRemovePlate", "__coskinBuildShare", "__coskinApplyShare",
+    "__coskinDeleteTheme", "__coskinSyncActions", "__coskinQuickFromDataUrl", "__coskinSetPetImage",
+    "__coskinClearPetImage", "__coskinPlacePet", "__coskinPetTick", "__coskinPetScale", "__coskinPanelScale",
+    "__coskinState"]) delete window[k];
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;
