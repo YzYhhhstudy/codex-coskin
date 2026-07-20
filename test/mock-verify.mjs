@@ -91,8 +91,17 @@ check("主按钮已跟随主题", s.btnBg !== baseline.btnBg, s.btnBg);
 const wrapperBg = await cdp.evaluate(`getComputedStyle(document.querySelector("[data-vscode-context]")).backgroundColor`);
 check("会话包装层保持透明（壁纸不被挡）", wrapperBg === "rgba(0, 0, 0, 0)", wrapperBg);
 // 无 glyph 主题（nebula）：卡片保留官方 svg 图标，应自动放大到 ~34px
-const svgW = await cdp.evaluate(`getComputedStyle(document.querySelector('[class*="home-suggestions"] button svg')).width`);
-check("无 glyph 主题的卡片图标已放大（svg ≈ 34px）", svgW === "34px", svgW);
+const cardIcon = await cdp.evaluate(`(() => {
+  const btn = document.querySelector('[class*="home-suggestions"] button');
+  return {
+    svgW: getComputedStyle(btn.querySelector("svg")).width,
+    iconRowJustify: getComputedStyle(btn.querySelector('[class*="justify-between"]')).justifyContent,
+    textMt: getComputedStyle(btn.querySelector('[class*="mt-auto"]')).marginTop,
+  };
+})()`);
+check("卡片图标放大到 40px", cardIcon.svgW === "40px", cardIcon.svgW);
+check("图标行居中（justify-between→center）", cardIcon.iconRowJustify === "center", cardIcon.iconRowJustify);
+check("文字 mt-auto 收掉（不再推到底部，靠拢图标）", cardIcon.textMt === "6px", cardIcon.textMt);
 check("顶栏品牌行已出现", probe?.brandVisible === true, JSON.stringify(probe));
 check("标题板已插进首页标题列", probe?.heroPlate === true, JSON.stringify(probe));
 const plateGeo = await cdp.evaluate(`(() => {

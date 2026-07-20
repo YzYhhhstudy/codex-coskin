@@ -94,12 +94,13 @@ function paletteOf(theme) {
 
 // 注入面板携带：全部内置主题 + （若在用）当前自定义主题。
 // 负载只带 {spec, bg}，CSS 由页面按当前可见度/外观现场编译。
-// 其余自定义主题不随包注入（图片体积大），从终端菜单选择时再注入。
+// 面板与 CLI 同步：带上所有内置 + 所有磁盘自定义主题（壁纸内嵌，体积换一致性）。
 async function switcherPayload(activeTheme) {
   const builtins = await loadBuiltinThemes();
-  const list = [...builtins];
-  if (activeTheme && activeTheme.kind === "custom" && !list.some((t) => t.id === activeTheme.id)) {
-    list.push(activeTheme);
+  const customs = await loadCustomThemes();
+  const list = [...builtins, ...customs];
+  if (activeTheme && !list.some((t) => t.id === activeTheme.id)) {
+    list.push(activeTheme); // 兜底：极少数情况下 active 不在磁盘（如临时对象）
   }
   const payload = [];
   for (const theme of list) {

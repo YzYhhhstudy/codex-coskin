@@ -122,8 +122,11 @@ glass(20, 1.08) +
 "  border-color: " + colors.accent + "7a !important;\n" +
 "  box-shadow: 0 10px 26px " + colors.accent + "26 !important;\n" +
 "}\n" +
-"[class*=\"home-suggestions\"] button svg { width: 34px !important; height: 34px !important; color: " + colors.accent + " !important; }\n" +
-"[class*=\"home-suggestions\"] button svg:not([data-cs-hid]) { margin-bottom: 4px; }\n" +
+"[class*=\"home-suggestions\"] button svg { width: 40px !important; height: 40px !important; color: " + colors.accent + " !important; }\n" +
+"[class*=\"home-suggestions\"] button span:has(> svg) { width: auto !important; height: auto !important; justify-content: center !important; }\n" +
+"[class*=\"home-suggestions\"] button [class*=\"justify-between\"] { justify-content: center !important; }\n" +
+"/* 真机卡片文字带 mt-auto 被推到底部、图标贴顶留大空档；收掉自动上边距让图标与文字靠拢居中 */\n" +
+"[class*=\"home-suggestions\"] button [class*=\"mt-auto\"] { margin-top: 6px !important; }\n" +
 "/* 卡片行加宽只在横幅激活时生效（data-cs-cards 标记）——否则会搅坏官方原生布局 */\n" +
 "[data-cs-cards] {\n" +
 "  width: var(--cs-cards-w, auto) !important;\n" +
