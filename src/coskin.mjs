@@ -221,9 +221,19 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   return theme;
 }
 
-// 一键恢复：重新应用上次用过的主题（关机/关 Codex 后最快的上肤方式）。
+async function gitPull() {
+  try { const { stdout } = await run("git", ["pull", "--ff-only"], { cwd: ROOT }); return { ok: true, msg: stdout.trim() }; }
+  catch (error) { return { ok: false, msg: (error.stderr || error.message).toString().trim() }; }
+}
+
+// 一键恢复：可选先拉最新代码，再重新应用上次用过的主题（关机/关 Codex 后最快的上肤方式）。
 // Codex 已关闭时会直接以调试模式启动并上肤（无运行实例→不打断，无需确认）。
-async function resume(port, confirmRestart) {
+async function resume(port, confirmRestart, doUpdate = false) {
+  if (doUpdate) {
+    log("检查更新…");
+    const r = await gitPull();
+    log(r.ok ? (r.msg || "已是最新。") : `更新跳过（${r.msg.split("\n")[0]}），继续用当前版本。`);
+  }
   const themes = await loadAllThemes();
   const last = await lastTheme();
   const target =
@@ -237,15 +247,14 @@ async function resume(port, confirmRestart) {
 
 async function update(port, confirmRestart) {
   log("正在从 GitHub 拉取最新代码…");
-  try {
-    const { stdout } = await run("git", ["pull", "--ff-only"], { cwd: ROOT });
-    log(stdout.trim() || "已是最新。");
-  } catch (error) {
+  const r = await gitPull();
+  if (!r.ok) {
     throw new Error(
-      "git pull 失败：" + (error.stderr || error.message).toString().trim() +
+      "git pull 失败：" + r.msg.split("\n")[0] +
         "\n若有本地改动，请先 git stash 或 git commit 再更新；或手动 git pull。",
     );
   }
+  log(r.msg || "已是最新。");
   const state = await appState(await findApp(), port).catch(() => ({ cdpAlive: false }));
   if (!state.cdpAlive) { log("✅ 代码已更新。下次应用主题即用新版本。"); return; }
   const active = await currentActiveTheme(port).catch(() => null);
@@ -597,7 +606,7 @@ try {
     const id = await importThemeFile(file);
     log(`应用它：node src/coskin.mjs apply ${id}（或菜单里直接选）`);
   } else if (command === "resume") {
-    await resume(port, cliConfirm);
+    await resume(port, cliConfirm, args.includes("--update"));
   } else if (command === "update") {
     await update(port, cliConfirm);
   } else if (command === "restore") {

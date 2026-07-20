@@ -6,7 +6,7 @@ where node >nul 2>nul || (
   pause
   exit /b 1
 )
-node src\coskin.mjs resume
+node src\coskin.mjs resume --update
 echo.
 echo 按任意键关闭窗口...
 pause >nul

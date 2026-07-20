@@ -72,12 +72,14 @@ xattr -dr com.apple.quarantine .
 
 皮肤只在当前会话有效——正常重启 Codex 就回到官方原样（这是安全设计，不装常驻进程）。
 所以关机或关过 Codex 后想再上肤，**双击 `一键换肤.command`（macOS）/ `一键换肤.bat`（Windows）**：
-它直接把你**上次用过的主题**重新贴上，不用再进菜单选。
+它会**先拉一次最新代码，再把你上次用过的主题重新贴上**，更新和上肤一步搞定，不用进菜单选。
 
 - Codex 当时是**关着**的 → 它顺手以调试模式打开 Codex 并上肤，**零提示、一步到位**。
 - Codex 当时**开着** → 只问一句「重启吗？」，输 `y` 即可。
+- 没网 / 拉取失败也不影响 —— 会跳过更新、继续用当前版本上肤。
 
-> 记忆点：第一次或想换主题用「双击换肤」（进菜单）；之后每天回来用「一键换肤」（直接上上次的）。
+> 记忆点：只有两个文件。第一次或想换主题用「双击换肤」（进菜单，顺带装好技能）；
+> 之后每天回来用「一键换肤」（自动更新 + 直接上上次的主题）。
 
 装完后 Codex **右下角会出现一个 🎨 按钮**：点开就是主题面板，内置主题之间**免重启秒切**，
 随时可点「官方原生」还原。面板下方还有两组即点即变的旋钮：
@@ -134,47 +136,39 @@ node src/coskin.mjs import ~/Downloads/xx.coskin.json
 
 ### 装成 Codex 技能（对话式换肤）
 
-双击 `安装到Codex技能.command`，CoSkin 会注册为 Codex 的 skill（`~/.agents/skills/coskin/`）。
+**不用单独装——第一次双击「双击换肤」时会自动装好** Codex 技能（写到 `~/.agents/skills/coskin/`）。
 之后直接对 Codex 说「换个赛博朋克主题」「导入这个 .coskin 文件」它就会操作 CoSkin——
 技能规程里写死了安全铁律：重启必须当面征得同意、皮肤仅当前会话、status 只读。
 
-### 还原官方界面（三选一）
+### 想回到官方界面
 
-- 右下角 🎨 面板里点「官方原生」；
-- 双击 `还原官方.command`；
-- 什么都不做，正常重启一次 Codex —— 皮肤只存在于当前会话（MVP 不做常驻，这是安全特性）。
+- 右下角 🎨 面板里点「官方原生」（或菜单里选「还原官方界面」）；
+- 或者什么都不做，正常重启一次 Codex —— 皮肤只存在于当前会话（不做常驻，这是安全特性）。
+
+（所以没有专门的「还原」双击文件：换回官方主题就是选一下「官方原生」，或关掉 Codex。）
 
 ## 命令行用法
 
 ```bash
-node src/coskin.mjs menu                     # 交互菜单（.command 双击的就是它）
+node src/coskin.mjs menu                     # 交互菜单（「双击换肤」双击的就是它）
+node src/coskin.mjs resume --update          # 「一键换肤」双击的就是它：拉最新 + 重上上次主题
 node src/coskin.mjs apply nebula             # 9 款内置主题，见下方「内置皮肤」
 node src/coskin.mjs apply --image ~/x.jpg --name 我的壁纸
 node src/coskin.mjs apply --spec ~/mytheme.json   # 一句话→AI 产出 spec→主题
-node src/coskin.mjs update                   # git pull 拉最新 + 自动重新应用当前主题
 node src/coskin.mjs restore                  # 还原官方
 node src/coskin.mjs status                   # 查看运行/注入状态
-node src/coskin.mjs launch --restart-ok      # 需要时允许自动重启 Codex（脚本场景）
 ```
 
-## 更新到最新版
+## 只有两个双击文件（每平台）
 
-**双击 `更新.command`（macOS）/ `更新.bat`（Windows）** —— 它会 `git pull` 拉最新代码，
-并自动把当前主题重新应用一次让新版本生效，一步到位。应用主题时若检测到有新版本，
-右下角 🎨 面板顶部也会亮一条「🔵 有新版本」提示（页面被 Codex 的 CSP 挡着不能自查
-GitHub，所以这条是应用时由本机 Node 侧查好带进来的）。
+| 什么时候用 | 做什么 | macOS | Windows |
+| --- | --- | --- | --- |
+| **第一次 / 想换主题** | 自动装好 Codex 技能 + 打开换肤菜单 | `双击换肤.command` | `双击换肤.bat` |
+| **每天回来用**（关机 / 关过 Codex 后）| 自动拉最新 + 重上你上次用过的主题 | `一键换肤.command` | `一键换肤.bat` |
 
-## 双击入口一览（macOS `.command` / Windows `.bat` 一一对应）
-
-| 用途 | macOS | Windows |
-| --- | --- | --- |
-| 打开换肤菜单 | `双击换肤.command` | `双击换肤.bat` |
-| 一键更新 | `更新.command` | `更新.bat` |
-| 还原官方 | `还原官方.command` | `还原.bat` |
-| 装成 Codex 技能 | `安装到Codex技能.command` | `安装到Codex技能.bat` |
-
-导出/导入 `.coskin`、用图片/一句话做主题等所有功能都在「换肤菜单」里（跨平台的 CLI），
-两个平台完全一致。
+「一键换肤」在 Codex 关着时会顺手以调试模式打开它并上肤，**零提示、一步到位**；
+Codex 开着时只问一句「重启吗？」。导出/导入 `.coskin`、用图片/一句话做主题、还原官方
+等所有功能都在「双击换肤」的菜单里（跨平台的 CLI），两个平台完全一致。
 
 Codex 在运行时，任何会触发重启的命令都会**先当面征得同意**（`--restart-ok` 视为提前授权）。
 

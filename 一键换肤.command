@@ -1,5 +1,5 @@
 #!/bin/zsh
-# CoSkin 一键上肤：直接重上你上次用过的主题（关机/关 Codex 后最快的方式）
+# CoSkin 日常入口：自动更新到最新 + 重上你上次用过的主题（关机/关过 Codex 后一步搞定）
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -17,7 +17,7 @@ if ! command -v node >/dev/null 2>&1; then
   echo "按回车关闭…"; read -r; exit 1
 fi
 
-node "$DIR/src/coskin.mjs" resume
+node "$DIR/src/coskin.mjs" resume --update
 echo ""
 echo "按回车关闭窗口…"
 read -r
