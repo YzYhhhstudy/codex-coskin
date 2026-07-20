@@ -125,10 +125,30 @@ node src/coskin.mjs menu                     # 交互菜单（.command 双击的
 node src/coskin.mjs apply nebula             # 9 款内置主题，见下方「内置皮肤」
 node src/coskin.mjs apply --image ~/x.jpg --name 我的壁纸
 node src/coskin.mjs apply --spec ~/mytheme.json   # 一句话→AI 产出 spec→主题
+node src/coskin.mjs update                   # git pull 拉最新 + 自动重新应用当前主题
 node src/coskin.mjs restore                  # 还原官方
 node src/coskin.mjs status                   # 查看运行/注入状态
 node src/coskin.mjs launch --restart-ok      # 需要时允许自动重启 Codex（脚本场景）
 ```
+
+## 更新到最新版
+
+**双击 `更新.command`（macOS）/ `更新.bat`（Windows）** —— 它会 `git pull` 拉最新代码，
+并自动把当前主题重新应用一次让新版本生效，一步到位。应用主题时若检测到有新版本，
+右下角 🎨 面板顶部也会亮一条「🔵 有新版本」提示（页面被 Codex 的 CSP 挡着不能自查
+GitHub，所以这条是应用时由本机 Node 侧查好带进来的）。
+
+## 双击入口一览（macOS `.command` / Windows `.bat` 一一对应）
+
+| 用途 | macOS | Windows |
+| --- | --- | --- |
+| 打开换肤菜单 | `双击换肤.command` | `双击换肤.bat` |
+| 一键更新 | `更新.command` | `更新.bat` |
+| 还原官方 | `还原官方.command` | `还原.bat` |
+| 装成 Codex 技能 | `安装到Codex技能.command` | `安装到Codex技能.bat` |
+
+导出/导入 `.coskin`、用图片/一句话做主题等所有功能都在「换肤菜单」里（跨平台的 CLI），
+两个平台完全一致。
 
 Codex 在运行时，任何会触发重启的命令都会**先当面征得同意**（`--restart-ok` 视为提前授权）。
 

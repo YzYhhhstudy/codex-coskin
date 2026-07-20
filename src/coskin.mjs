@@ -4,6 +4,8 @@
 
 import { readdir, readFile, writeFile, mkdir, copyFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
@@ -17,6 +19,37 @@ import { buildPaletteExpression, coskinDecideAppearance } from "./palette.mjs";
 import { coskinCompileTokens } from "./tokens.mjs";
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
+const run = promisify(execFile);
+const REPO_RAW = "https://raw.githubusercontent.com/YzYhhhstudy/codex-coskin/master/package.json";
+
+// ---------- 版本 / 更新 ----------
+async function localVersion() {
+  try { return JSON.parse(await readFile(join(ROOT, "package.json"), "utf8")).version || "0.0.0"; }
+  catch { return "0.0.0"; }
+}
+async function latestVersion() {
+  try {
+    const res = await fetch(REPO_RAW, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+    if (!res.ok) return null;
+    return JSON.parse(await res.text()).version || null;
+  } catch { return null; }
+}
+function cmpVer(a, b) {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+  return 0;
+}
+// 最多查一次，best-effort：离线/超时都返回 updateAvailable:false
+async function getUpdateInfo() {
+  const current = await localVersion();
+  const latest = await latestVersion();
+  return { current, latest, updateAvailable: !!latest && cmpVer(latest, current) > 0 };
+}
+async function currentActiveTheme(port) {
+  const results = await withPageTargets(port, (cdp) => cdp.evaluate("window.__coskinActive || null"));
+  for (const r of results) if (r.ok && r.value) return r.value;
+  return null;
+}
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const THEMES_DIR = join(ROOT, "themes");
@@ -172,9 +205,34 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   await ensureReady(port, confirmRestart);
   log(`正在应用主题「${theme.name}」…`);
   const payload = await switcherPayload(theme);
-  const { applied } = await injectEverywhere(port, buildInjectionScript(payload, theme.id));
+  const updateInfo = await getUpdateInfo();
+  const { applied } = await injectEverywhere(port, buildInjectionScript(payload, theme.id, updateInfo));
   log(`✅ 已应用「${theme.name}」（${applied} 个窗口）。右下角 🎨 按钮可随时一键切换或还原。`);
+  if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「更新.command」一键升级。`);
   return theme;
+}
+
+async function update(port, confirmRestart) {
+  log("正在从 GitHub 拉取最新代码…");
+  try {
+    const { stdout } = await run("git", ["pull", "--ff-only"], { cwd: ROOT });
+    log(stdout.trim() || "已是最新。");
+  } catch (error) {
+    throw new Error(
+      "git pull 失败：" + (error.stderr || error.message).toString().trim() +
+        "\n若有本地改动，请先 git stash 或 git commit 再更新；或手动 git pull。",
+    );
+  }
+  const state = await appState(await findApp(), port).catch(() => ({ cdpAlive: false }));
+  if (!state.cdpAlive) { log("✅ 代码已更新。下次应用主题即用新版本。"); return; }
+  const active = await currentActiveTheme(port).catch(() => null);
+  if (!active) { log("✅ 代码已更新。在右下角 🎨 面板重选一个主题即用新版本。"); return; }
+  try {
+    log(`重新应用当前主题以生效新版本…`);
+    await applyTheme(port, active, confirmRestart);
+  } catch {
+    log(`✅ 代码已更新。当前主题「${active}」在面板里，重选一次即用新版本。`);
+  }
 }
 
 async function restore(port) {
@@ -414,11 +472,13 @@ async function menu(port) {
       const nCustom = themes.length + 1;
       const nImport = themes.length + 2;
       const nExport = themes.length + 3;
-      const nRestore = themes.length + 4;
-      const nStatus = themes.length + 5;
+      const nUpdate = themes.length + 4;
+      const nRestore = themes.length + 5;
+      const nStatus = themes.length + 6;
       console.log(`  ${nCustom}) 用我自己的图片做主题…`);
       console.log(`  ${nImport}) 导入 .coskin 主题文件…`);
       console.log(`  ${nExport}) 导出主题为 .coskin 文件（分享给朋友）…`);
+      console.log(`  ${nUpdate}) 检查并更新到最新版本`);
       console.log(`  ${nRestore}) 还原官方界面`);
       console.log(`  ${nStatus}) 查看状态`);
       console.log("  0) 退出");
@@ -448,6 +508,8 @@ async function menu(port) {
           const idx = Number(which);
           if (!Number.isInteger(idx) || idx < 1 || idx > themes.length) throw new Error("编号不对。");
           await exportTheme(themes[idx - 1].id);
+        } else if (n === nUpdate) {
+          await update(port, confirmRestart);
         } else if (n === nRestore) {
           await restore(port);
         } else if (n === nStatus) {
@@ -511,6 +573,8 @@ try {
     if (!file) throw new Error("用法：import <文件.coskin.json>");
     const id = await importThemeFile(file);
     log(`应用它：node src/coskin.mjs apply ${id}（或菜单里直接选）`);
+  } else if (command === "update") {
+    await update(port, cliConfirm);
   } else if (command === "restore") {
     await restore(port);
   } else if (command === "status") {

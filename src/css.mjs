@@ -186,6 +186,7 @@ const PANEL_CSS = `
 }
 #coskin-ui .coskin-panel.coskin-open { display: flex; }
 #coskin-ui .coskin-head { font-size: 12px; font-weight: 700; opacity: .65; padding: 2px 6px 6px; letter-spacing: .04em; }
+#coskin-ui .coskin-update { font-size: 11px; font-weight: 700; color: #7cc4ff; padding: 0 6px 6px; cursor: default; }
 #coskin-ui .coskin-item {
   display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: none; border-radius: 9px;
   background: transparent; color: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
@@ -293,10 +294,11 @@ const PANEL_CSS = `
 
 // 注入脚本：主题编译 + 外观同步 + 🎨 面板（主题列表 / 可见度档位 / 深浅翻转 / 图片上传快捷槽）。
 // themes: [{ id, name, accent, appearance, spec:{palette}, bg }]，activeId 为要应用的主题（null=原生）。
-export function buildInjectionScript(themes, activeId) {
+export function buildInjectionScript(themes, activeId, updateInfo = null) {
   return `(() => {
   const THEMES = ${JSON.stringify(themes)};
   const ACTIVE = ${JSON.stringify(activeId)};
+  const UPDATE = ${JSON.stringify(updateInfo)};
   const QUICK_KEY = "coskin.quickSlot.v5";
   const IMPORT_KEY = "coskin.imported.v1";
   const SHARE_FORMAT = "coskin-theme";
@@ -315,6 +317,7 @@ export function buildInjectionScript(themes, activeId) {
       petDrag: "拖我去任何地方", processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
+      updateAvail: "有新版本", updateHow: "双击「更新.command」一键升级（会 git pull 并自动重新应用）",
       quotes: ["今天写点什么好？", "小步提交，常回滚。", "先让它跑起来，再让它漂亮。"],
     },
     en: {
@@ -327,6 +330,7 @@ export function buildInjectionScript(themes, activeId) {
       petDrag: "Drag me anywhere", processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
+      updateAvail: "Update available", updateHow: "Double-click 更新.command / update.bat to upgrade (git pull + auto re-apply).",
       quotes: ["What shall we build today?", "Small commits, easy rollbacks.", "Make it work, then make it pretty."],
     },
   };
@@ -752,6 +756,13 @@ export function buildInjectionScript(themes, activeId) {
   const panel = D.createElement("div"); panel.className = "coskin-panel";
   const head = D.createElement("div"); head.className = "coskin-head"; head.textContent = tr("header");
   panel.appendChild(head);
+  // 有新版本提示（Node 侧应用时查的；页面被 CSP 挡着不能自查 GitHub）
+  if (UPDATE && UPDATE.updateAvailable) {
+    const up = D.createElement("div"); up.className = "coskin-update";
+    up.textContent = "🔵 " + tr("updateAvail") + " v" + UPDATE.latest;
+    up.title = tr("updateHow");
+    panel.appendChild(up);
+  }
   // 主题列表：默认收起的浮层（绝对定位，展开不撑高看板）
   const items = D.createElement("div");
   items.className = "coskin-list";

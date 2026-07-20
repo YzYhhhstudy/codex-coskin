@@ -1,11 +1,13 @@
 ---
 name: coskin
-description: Use when 用户想给 Codex Desktop 换肤、还原官方界面、用图片或一句话做主题、导入/导出 .coskin 主题文件（macOS）。
+description: Use when 用户想给 Codex Desktop 换肤、还原官方界面、用图片或一句话做主题、导入/导出 .coskin 主题文件、检查更新（macOS 与 Windows）。
 ---
 
 # CoSkin — Codex Desktop 换肤
 
 仓库路径（安装时写入）：`__COSKIN_ROOT__`。所有命令用已验证的 Node.js 22+ 运行。
+命令本身**跨平台**（同一份 `src/coskin.mjs`）；只有把 Codex 拉起来那层分平台：
+macOS 完整支持、Windows 支持独立安装版（Store/MSIX 版暂不支持）。
 
 ## 铁律（必须遵守）
 
@@ -26,11 +28,16 @@ node __COSKIN_ROOT__/src/coskin.mjs apply --image <图片> [--name 名字]   # �
 node __COSKIN_ROOT__/src/coskin.mjs apply --spec <spec.json>            # 一句话主题（spec 见下）
 node __COSKIN_ROOT__/src/coskin.mjs import <文件.coskin.json>           # 导入别人分享的主题
 node __COSKIN_ROOT__/src/coskin.mjs export <id> [--out 路径]            # 导出主题为单文件分享
+node __COSKIN_ROOT__/src/coskin.mjs update               # git pull 拉最新 + 自动重新应用
 node __COSKIN_ROOT__/src/coskin.mjs restore              # 还原官方界面
 node __COSKIN_ROOT__/src/coskin.mjs status               # 只读状态
 ```
 
-傻瓜入口：`open "__COSKIN_ROOT__/双击换肤.command"`（交互菜单，含导入/导出）。
+Windows 上把路径分隔符换成 `\`（如 `node __COSKIN_ROOT__\src\coskin.mjs list`）。
+
+傻瓜入口（双击）：
+- macOS：`双击换肤.command` / `更新.command` / `还原官方.command` / `安装到Codex技能.command`
+- Windows：`双击换肤.bat` / `更新.bat` / `还原.bat` / `安装到Codex技能.bat`
 
 ## 按用户意图分派
 
