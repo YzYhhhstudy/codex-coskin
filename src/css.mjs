@@ -89,8 +89,9 @@ glass(16, 1.06) +
 glass(20, 1.08) +
 "}\n" +
 "/* 对话框上方的 project/worktree/branch「帽子」与对话框重叠会叠出双层不透明度；\n" +
-"   把这条帽子打透明，让对话框成为唯一的水玻璃面（侧栏底色是本项目 !important 单给的，不受影响）。 */\n" +
-"div:has(.composer-surface-chrome) > [class*=\"side-bar-background\"] {\n" +
+"   按帽子自身特征类组合（side-bar-background + -mx-px + flex-nowrap，侧栏没有这些类）精准打透明，\n" +
+"   让对话框成为唯一的水玻璃面。 */\n" +
+"[class*=\"bg-token-side-bar-background\"][class*=\"-mx-px\"][class*=\"flex-nowrap\"] {\n" +
 "  background: transparent !important; backdrop-filter: none !important; box-shadow: none !important;\n" +
 "}\n" +
 "[data-app-action-sidebar-thread-active=\"true\"] {\n" +
