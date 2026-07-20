@@ -274,6 +274,19 @@ const PANEL_CSS = `
 #coskin-pet.cs-done .cs-pet-body { animation: coskin-pop .6s ease; }
 #coskin-pet.cs-error .cs-pet-body { animation: coskin-shake .5s ease; box-shadow: 0 8px 18px rgba(0,0,0,.3), 0 0 0 3px var(--cs-pet-err, rgba(220,60,60,.6)); }
 #coskin-pet .cs-pet-body { pointer-events: auto; cursor: grab; }
+/* 自定义形象：图片铺满圆形，藏掉默认的眼睛/腮红（动画不受影响） */
+#coskin-pet .cs-pet-body.cs-pet-custom { background-size: cover; background-position: center; border-radius: 50%; box-shadow: 0 8px 18px rgba(0,0,0,.32); }
+#coskin-pet .cs-pet-custom .cs-pet-eye, #coskin-pet .cs-pet-custom .cs-pet-cheek { display: none; }
+#coskin-pet .cs-pet-menu {
+  display: none; position: absolute; bottom: 54px; right: 0; flex-direction: column; gap: 2px;
+  padding: 5px; border-radius: 10px; background: rgba(20,22,40,.94); border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 12px 30px rgba(0,0,0,.5); backdrop-filter: blur(14px); pointer-events: auto;
+  font: 600 11px/1.2 ui-rounded, system-ui, sans-serif; color: #f2f4ff; white-space: nowrap;
+}
+#coskin-pet .cs-pet-menu.cs-open { display: flex; }
+#coskin-pet.cs-flip .cs-pet-menu { right: auto; left: 0; }
+#coskin-pet .cs-pet-mi { border: none; background: transparent; color: inherit; padding: 6px 10px; border-radius: 7px; cursor: pointer; text-align: left; }
+#coskin-pet .cs-pet-mi:hover { background: rgba(255,255,255,.12); }
 #coskin-pet.cs-drag .cs-pet-body { cursor: grabbing; }
 #coskin-pet.cs-drag .cs-pet-bubble { opacity: .35; }
 #coskin-pet.cs-flip { flex-direction: row-reverse; }
@@ -327,7 +340,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       appearance: "外观", dark: "深", light: "浅", pet: "桌宠", on: "开", off: "关",
       makeImg: "＋ 用图片做主题", uploadShare: "↥ 上传 .coskin 主题文件",
       hint: "点顶部主题名展开列表；选中后底部「导出」分享成 .coskin、「删除」移出列表（内置为隐藏可恢复）。",
-      petDrag: "拖我去任何地方", processing: "处理中…", readFail: "读取失败，再试一次",
+      petDrag: "拖我去任何地方", petTap: "点我换形象 · 拖我搬家", petCustom: "＋ 换个形象（图片）", petReset: "恢复默认形象",
+      processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
       updateAvail: "有新版本", updateHow: "双击「更新.command」一键升级（会 git pull 并自动重新应用）",
@@ -343,7 +357,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       appearance: "Mode", dark: "Dark", light: "Light", pet: "Pet", on: "On", off: "Off",
       makeImg: "＋ Make theme from image", uploadShare: "↥ Import .coskin file",
       hint: "Click the theme name up top to open the list; pick one, then Export it as .coskin or Delete it (built-ins are hidden, not removed).",
-      petDrag: "Drag me anywhere", processing: "Processing…", readFail: "Read failed, try again",
+      petDrag: "Drag me anywhere", petTap: "Tap to customize · drag to move", petCustom: "＋ Change look (image)", petReset: "Reset to default",
+      processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
       updateAvail: "Update available", updateHow: "Double-click 更新.command / update.bat to upgrade (git pull + auto re-apply).",
@@ -1035,6 +1050,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   // 点面板外的任何地方自动收起（重注入前先清掉旧监听，避免累积）
   if (window.__coskinOutsideClick) D.removeEventListener("mousedown", window.__coskinOutsideClick);
   window.__coskinOutsideClick = (e) => {
+    // 点桌宠以外 → 收起桌宠菜单
+    if (!pet.contains(e.target)) petMenu.classList.remove("cs-open");
     if (!ui.contains(e.target)) { panel.classList.remove("coskin-open"); return; }
     // 面板内、但点在列表和选择器之外 → 收起浮层列表
     if (listOpen && !items.contains(e.target) && !nameBtn.contains(e.target)) setListOpen(false);
@@ -1080,12 +1097,50 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   const pet = D.createElement("div"); pet.id = "coskin-pet";
   const bubble = Object.assign(D.createElement("div"), { className: "cs-pet-bubble" });
   const body = Object.assign(D.createElement("div"), { className: "cs-pet-body" });
-  body.title = tr("petDrag");
+  body.title = tr("petTap");
   for (const cls of ["cs-pet-eye l", "cs-pet-eye r", "cs-pet-cheek l", "cs-pet-cheek r"]) {
     body.appendChild(Object.assign(D.createElement("span"), { className: cls }));
   }
-  pet.appendChild(bubble); pet.appendChild(body);
+  // 点桌宠弹出的小菜单：换形象 / 恢复默认
+  const petMenu = D.createElement("div"); petMenu.className = "cs-pet-menu";
+  const petFile = D.createElement("input");
+  petFile.type = "file"; petFile.accept = "image/png,image/jpeg,image/webp,image/svg+xml,.svg"; petFile.style.display = "none";
+  const petUploadBtn = Object.assign(D.createElement("button"), { className: "cs-pet-mi", textContent: tr("petCustom") });
+  const petResetBtn = Object.assign(D.createElement("button"), { className: "cs-pet-mi", textContent: tr("petReset") });
+  petMenu.appendChild(petUploadBtn); petMenu.appendChild(petResetBtn); petMenu.appendChild(petFile);
+  pet.appendChild(bubble); pet.appendChild(body); pet.appendChild(petMenu);
   D.documentElement.appendChild(pet);
+
+  // 自定义桌宠形象：上传图片→存 localStorage→设为身体背景（呼吸/转圈/弹跳动画照旧生效）
+  const applyPetImage = (url) => { body.classList.add("cs-pet-custom"); body.style.backgroundImage = "url(" + JSON.stringify(url) + ")"; };
+  const clearPetImage = () => { body.classList.remove("cs-pet-custom"); body.style.removeProperty("background-image"); };
+  try { const savedImg = localStorage.getItem("coskin.pet.image.v1"); if (savedImg) applyPetImage(savedImg); } catch {}
+  const togglePetMenu = (v) => { petMenu.classList.toggle("cs-open", v === undefined ? !petMenu.classList.contains("cs-open") : !!v); };
+  window.__coskinSetPetImage = (url) => { try { localStorage.setItem("coskin.pet.image.v1", url); } catch {} applyPetImage(url); };
+  window.__coskinClearPetImage = () => { try { localStorage.removeItem("coskin.pet.image.v1"); } catch {} clearPetImage(); };
+  petUploadBtn.addEventListener("click", (e) => { e.stopPropagation(); petFile.click(); });
+  petResetBtn.addEventListener("click", (e) => { e.stopPropagation(); window.__coskinClearPetImage(); togglePetMenu(false); });
+  petFile.addEventListener("change", () => {
+    const f = petFile.files && petFile.files[0]; petFile.value = ""; if (!f) return;
+    const isSvg = /svg/i.test(f.type) || /\\.svg$/i.test(f.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result);
+      const finish = (url) => { window.__coskinSetPetImage(url); togglePetMenu(false); };
+      if (isSvg) { finish(raw); return; }
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, 160 / Math.max(img.width, img.height));
+        const c = D.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        let out = c.toDataURL("image/webp", 0.9); if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/png");
+        finish(out);
+      };
+      img.onerror = () => finish(raw);
+      img.src = raw;
+    };
+    reader.readAsDataURL(f);
+  });
   // 桌宠拖拽：抓身体，全屏clamp，位置进 localStorage
   const placePet = (x, y) => {
     x = Math.max(8, Math.min(innerWidth - 60, x));
@@ -1103,8 +1158,11 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     e.preventDefault();
     const bodyRect = body.getBoundingClientRect();
     const dx = e.clientX - bodyRect.left, dy = e.clientY - bodyRect.top;
-    let last = null;
+    const startX = e.clientX, startY = e.clientY;
+    let last = null, moved = false;
     const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return; // 阈值内不算拖
+      moved = true;
       pet.classList.add("cs-drag");
       // 锚点跟身体走：flip 翻边会改变身体在容器里的偏移，每次实时取
       const offset = body.getBoundingClientRect().left - pet.getBoundingClientRect().left;
@@ -1114,7 +1172,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
       pet.classList.remove("cs-drag");
-      if (last) { try { localStorage.setItem("coskin.pet.pos.v1", JSON.stringify(last)); } catch {} }
+      if (moved && last) { try { localStorage.setItem("coskin.pet.pos.v1", JSON.stringify(last)); } catch {} }
+      else if (!moved) togglePetMenu(); // 没拖动=点击→开关换形象菜单
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);

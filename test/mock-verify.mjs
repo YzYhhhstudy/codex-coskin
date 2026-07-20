@@ -156,6 +156,22 @@ await cdp.evaluate(`for(let i=0;i<5;i++) window.__coskinPetTick(); "toIdle"`);
 check("再几拍→回到 idle（无 working/done 类）", (await cdp.evaluate(`(() => { const p=document.getElementById("coskin-pet"); return !p.classList.contains("cs-working") && !p.classList.contains("cs-done"); })()`)) === true);
 await cdp.evaluate(`document.getElementById("cs-test-stream")?.remove()`); // 清理测试文本
 
+console.log("\n[1d] 自定义桌宠形象：上传→替换外观、藏默认脸，点击弹菜单，可恢复默认");
+const PET_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGP8z8Dwn4EIwDioFAB4ggL/1w5towAAAABJRU5ErkJggg==";
+await cdp.evaluate(`window.__coskinSetPetImage(${JSON.stringify(PET_IMG)}); "set"`);
+check("设置自定义形象→身体带 cs-pet-custom + 背景图", (await cdp.evaluate(`(() => { const b=document.querySelector("#coskin-pet .cs-pet-body"); return b.classList.contains("cs-pet-custom") && b.style.backgroundImage.indexOf("data:image") >= 0; })()`)) === true);
+check("默认眼睛已隐藏", (await cdp.evaluate(`getComputedStyle(document.querySelector("#coskin-pet .cs-pet-eye")).display`)) === "none");
+const menuOpen = await cdp.evaluate(`(() => {
+  const b = document.querySelector("#coskin-pet .cs-pet-body"); const r = b.getBoundingClientRect();
+  b.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: r.left + 10, clientY: r.top + 10 }));
+  window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientX: r.left + 10, clientY: r.top + 10 }));
+  return document.querySelector("#coskin-pet .cs-pet-menu").classList.contains("cs-open");
+})()`);
+check("点桌宠（不拖）弹出换形象菜单", menuOpen === true);
+check("换形象快照存进 localStorage", (await cdp.evaluate(`!!localStorage.getItem("coskin.pet.image.v1")`)) === true);
+await cdp.evaluate(`window.__coskinClearPetImage(); "clear"`);
+check("恢复默认→无 cs-pet-custom、快照已清", (await cdp.evaluate(`!document.querySelector("#coskin-pet .cs-pet-body").classList.contains("cs-pet-custom") && !localStorage.getItem("coskin.pet.image.v1")`)) === true);
+
 console.log("\n[2] 打开 🎨 面板（含可见度/外观控件）");
 await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-fab").click(); "clicked"`);
 check("面板展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-panel").classList.contains("coskin-open")`)) === true);
