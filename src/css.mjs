@@ -170,7 +170,7 @@ export function backgroundFromTheme(theme, imageDataUrl = null) {
 }
 
 const PANEL_CSS = `
-#coskin-ui { position: fixed; right: 18px; bottom: 18px; z-index: 2147483000; font-family: ui-rounded, system-ui, -apple-system, sans-serif; }
+#coskin-ui { position: fixed; right: 18px; bottom: 18px; z-index: 2147483000; font-family: ui-rounded, system-ui, -apple-system, sans-serif; transform: scale(var(--cs-panel-k, 1)); transform-origin: bottom right; }
 #coskin-ui .coskin-fab {
   width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px;
   background: rgba(24, 26, 46, 0.78); color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.35);
@@ -263,7 +263,9 @@ const PANEL_CSS = `
 @keyframes coskin-spin { to { transform: rotate(360deg); } }
 @keyframes coskin-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
 @keyframes coskin-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-#coskin-pet { position: fixed; right: 24px; bottom: 84px; z-index: 2147482999; display: flex; align-items: flex-end; gap: 9px; pointer-events: none; font-family: ui-rounded, system-ui, sans-serif; }
+#coskin-pet { position: fixed; right: 24px; bottom: 84px; z-index: 2147482999; pointer-events: none; font-family: ui-rounded, system-ui, sans-serif; }
+#coskin-pet .cs-pet-unit { display: flex; align-items: flex-end; gap: 9px; scale: var(--cs-pet-k, 1); transform-origin: bottom right; transition: scale .12s ease; }
+#coskin-pet.cs-flip .cs-pet-unit { flex-direction: row-reverse; transform-origin: bottom left; }
 /* working：呼吸加速 + 一圈转动的光环（用主题强调色） */
 #coskin-pet.cs-working .cs-pet-body { animation: coskin-bob-fast 1.1s ease-in-out infinite; }
 #coskin-pet.cs-working .cs-pet-body::before {
@@ -289,7 +291,6 @@ const PANEL_CSS = `
 #coskin-pet .cs-pet-mi:hover { background: rgba(255,255,255,.12); }
 #coskin-pet.cs-drag .cs-pet-body { cursor: grabbing; }
 #coskin-pet.cs-drag .cs-pet-bubble { opacity: .35; }
-#coskin-pet.cs-flip { flex-direction: row-reverse; }
 #coskin-pet.cs-flip .cs-pet-bubble { border-radius: 12px 12px 12px 3px; }
 #coskin-pet .cs-pet-bubble {
   max-width: 190px; padding: 7px 11px; border-radius: 12px 12px 3px 12px;
@@ -316,6 +317,10 @@ const PANEL_CSS = `
 #coskin-pet .cs-pet-eye.l { left: 11px; } #coskin-pet .cs-pet-eye.r { right: 11px; }
 #coskin-pet .cs-pet-cheek { position: absolute; top: 25px; width: 6px; height: 3.5px; border-radius: 50%; background: rgba(255,255,255,.35); }
 #coskin-pet .cs-pet-cheek.l { left: 8px; } #coskin-pet .cs-pet-cheek.r { right: 8px; }
+#coskin-ui .coskin-size { display: flex; align-items: center; gap: 8px; padding: 3px 8px 5px; font-size: 11px; font-weight: 700; opacity: .6; }
+#coskin-ui .coskin-size input[type="range"] { flex: 1; height: 4px; accent-color: var(--cs-accent, #7c6cff); cursor: pointer; }
+#coskin-pet .cs-pet-size { display: flex; align-items: center; gap: 6px; padding: 3px 6px 5px; opacity: .9; }
+#coskin-pet .cs-pet-size input[type="range"] { width: 92px; height: 4px; accent-color: var(--cs-accent, #7c6cff); cursor: pointer; }
 `;
 
 // 注入脚本：主题编译 + 外观同步 + 🎨 面板（主题列表 / 可见度档位 / 深浅翻转 / 图片上传快捷槽）。
@@ -340,7 +345,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       appearance: "外观", dark: "深", light: "浅", pet: "桌宠", on: "开", off: "关",
       makeImg: "＋ 用图片做主题", uploadShare: "↥ 上传 .coskin 主题文件",
       hint: "点顶部主题名展开列表；选中后底部「导出」分享成 .coskin、「删除」移出列表（内置为隐藏可恢复）。",
-      petDrag: "拖我去任何地方", petTap: "点我换形象 · 拖我搬家", petCustom: "＋ 换个形象（图片）", petReset: "恢复默认形象",
+      petDrag: "拖我去任何地方", petTap: "点我换形象 · 拖我搬家", petCustom: "＋ 换个形象（图片）", petReset: "恢复默认形象", petSize: "大小", panelSize: "面板大小",
       processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
@@ -357,7 +362,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       appearance: "Mode", dark: "Dark", light: "Light", pet: "Pet", on: "On", off: "Off",
       makeImg: "＋ Make theme from image", uploadShare: "↥ Import .coskin file",
       hint: "Click the theme name up top to open the list; pick one, then Export it as .coskin or Delete it (built-ins are hidden, not removed).",
-      petDrag: "Drag me anywhere", petTap: "Tap to customize · drag to move", petCustom: "＋ Change look (image)", petReset: "Reset to default",
+      petDrag: "Drag me anywhere", petTap: "Tap to customize · drag to move", petCustom: "＋ Change look (image)", petReset: "Reset to default", petSize: "Size", panelSize: "Panel size",
       processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
@@ -1037,6 +1042,22 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   panel.appendChild(importBtn);
   panel.appendChild(shareInput);
 
+  // 面板大小滑块：整体等比缩放 #coskin-ui（transform，右下角为锚点，不 reflow 不崩版）
+  const panelSizeRow = D.createElement("div"); panelSizeRow.className = "coskin-size";
+  panelSizeRow.appendChild(Object.assign(D.createElement("span"), { textContent: tr("panelSize") }));
+  const panelSizeInput = D.createElement("input");
+  panelSizeInput.type = "range"; panelSizeInput.min = "0.85"; panelSizeInput.max = "1.6"; panelSizeInput.step = "0.05";
+  const applyPanelScale = (k) => {
+    const v = Math.max(0.85, Math.min(1.6, Number(k) || 1));
+    ui.style.setProperty("--cs-panel-k", String(v));
+    panelSizeInput.value = String(v);
+  };
+  window.__coskinPanelScale = (k) => { applyPanelScale(k); try { localStorage.setItem("coskin.panel.size.v1", String(panelSizeInput.value)); } catch {} };
+  try { const pv = parseFloat(localStorage.getItem("coskin.panel.size.v1")); applyPanelScale(isFinite(pv) ? pv : 1); } catch { applyPanelScale(1); }
+  panelSizeInput.addEventListener("input", () => window.__coskinPanelScale(panelSizeInput.value));
+  panelSizeRow.appendChild(panelSizeInput);
+  panel.appendChild(panelSizeRow);
+
   const hint = D.createElement("div");
   hint.className = "coskin-hint";
   hint.textContent = tr("hint");
@@ -1108,7 +1129,18 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   const petUploadBtn = Object.assign(D.createElement("button"), { className: "cs-pet-mi", textContent: tr("petCustom") });
   const petResetBtn = Object.assign(D.createElement("button"), { className: "cs-pet-mi", textContent: tr("petReset") });
   petMenu.appendChild(petUploadBtn); petMenu.appendChild(petResetBtn); petMenu.appendChild(petFile);
-  pet.appendChild(bubble); pet.appendChild(body); pet.appendChild(petMenu);
+  // 大小滑块（连续缩放，跟随呼吸/弹跳动画，不冲突）
+  const petSizeRow = D.createElement("div"); petSizeRow.className = "cs-pet-size";
+  petSizeRow.appendChild(Object.assign(D.createElement("span"), { textContent: tr("petSize") }));
+  const petSizeInput = D.createElement("input");
+  petSizeInput.type = "range"; petSizeInput.min = "0.7"; petSizeInput.max = "2.6"; petSizeInput.step = "0.05";
+  petSizeRow.appendChild(petSizeInput);
+  petMenu.appendChild(petSizeRow);
+  // 气泡+身体同装进一个缩放单元：缩放作用于 unit，气泡跟着位移+等比放大，不与身体重叠；
+  // 菜单留在 unit 外，缩放时不跟着变大（拖它自己的滑块时不会自我缩放）。
+  const unit = D.createElement("div"); unit.className = "cs-pet-unit";
+  unit.appendChild(bubble); unit.appendChild(body);
+  pet.appendChild(unit); pet.appendChild(petMenu);
   D.documentElement.appendChild(pet);
 
   // 自定义桌宠形象：上传图片→存 localStorage→设为身体背景（呼吸/转圈/弹跳动画照旧生效）
@@ -1130,7 +1162,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       if (isSvg) { finish(raw); return; }
       const img = new Image();
       img.onload = () => {
-        const s = Math.min(1, 160 / Math.max(img.width, img.height));
+        const s = Math.min(1, 256 / Math.max(img.width, img.height)); // 256：桌宠可放大到 ~120px，留 2x 清晰度
         const c = D.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
         let out = c.toDataURL("image/webp", 0.9); if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/png");
@@ -1143,9 +1175,11 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   });
   // 桌宠拖拽：抓身体，全屏clamp，位置进 localStorage
   let petPos = null; // 最近位置（null=用 CSS 默认右下角锚点，天然自适应）
+  let petK = 1;      // 当前缩放（身体基准 46px；夹子随之变大，防放大后掉出屏幕）
   const placePet = (x, y) => {
-    x = Math.max(8, Math.min(innerWidth - 56, x));
-    y = Math.max(8, Math.min(innerHeight - 56, y));
+    const m = Math.round(46 * petK) + 10; // 随实际尺寸走，替代硬编码的 56
+    x = Math.max(8, Math.min(innerWidth - m, x));
+    y = Math.max(8, Math.min(innerHeight - m, y));
     pet.style.left = x + "px"; pet.style.top = y + "px";
     pet.style.right = "auto"; pet.style.bottom = "auto";
     pet.classList.toggle("cs-flip", x < 250);
@@ -1157,6 +1191,17 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const saved = JSON.parse(localStorage.getItem("coskin.pet.pos.v1") || "null");
     if (saved && typeof saved.x === "number") placePet(saved.x, saved.y);
   } catch {}
+  // 缩放：用独立 scale 属性（跟 transform 动画叠加，不被 keyframes 覆盖）；改动后重夹位置
+  const applyPetScale = (k) => {
+    petK = Math.max(0.7, Math.min(2.6, Number(k) || 1));
+    pet.style.setProperty("--cs-pet-k", String(petK)); // 作用于 .cs-pet-unit（气泡+身体一起缩放/位移）
+    petSizeInput.value = String(petK);
+    if (petPos) placePet(petPos.x, petPos.y);
+  };
+  window.__coskinPetScale = (k) => { applyPetScale(k); try { localStorage.setItem("coskin.pet.scale.v1", String(petK)); } catch {} };
+  try { const sv = parseFloat(localStorage.getItem("coskin.pet.scale.v1")); applyPetScale(isFinite(sv) ? sv : 1); } catch { applyPetScale(1); }
+  petSizeInput.addEventListener("mousedown", (e) => e.stopPropagation());
+  petSizeInput.addEventListener("input", (e) => { e.stopPropagation(); window.__coskinPetScale(petSizeInput.value); });
   // 窗口缩放时把拖过的桌宠重新夹回可见范围（否则绝对坐标会落到窗口外→"消失"）
   if (window.__coskinPetResize) window.removeEventListener("resize", window.__coskinPetResize);
   window.__coskinPetResize = () => {
@@ -1246,6 +1291,7 @@ export const RESTORE_SCRIPT = `(() => {
   if (window.__coskinTimers) { for (const t of window.__coskinTimers) clearInterval(t); delete window.__coskinTimers; }
   if (window.__coskinOutsideClick) { document.removeEventListener("mousedown", window.__coskinOutsideClick); delete window.__coskinOutsideClick; }
   if (window.__coskinPetResize) { window.removeEventListener("resize", window.__coskinPetResize); delete window.__coskinPetResize; }
+  delete window.__coskinPetScale; delete window.__coskinPanelScale;
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;

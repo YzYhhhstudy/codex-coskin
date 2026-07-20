@@ -181,6 +181,46 @@ check("窗口缩小后桌宠被夹回可见范围内", petAfter.left <= petAfter
 await cdp.send("Emulation.clearDeviceMetricsOverride", {}, { timeoutMs: 8000 });
 await cdp.evaluate(`window.dispatchEvent(new Event("resize")); localStorage.removeItem("coskin.pet.pos.v1"); "reset"`);
 
+console.log("\n[1f] 桌宠 / 面板 滑块缩放（连续，带上下限，缩放后位置重夹）");
+// 桌宠：缩放作用于 .cs-pet-unit（气泡+身体一起），身体动画（transform）与之独立不冲突
+await cdp.evaluate(`window.__coskinPetScale(1.8); "s"`);
+check("桌宠缩放写入 --cs-pet-k（作用于缩放单元）", (await cdp.evaluate(`document.getElementById("coskin-pet").style.getPropertyValue("--cs-pet-k")`)) === "1.8");
+check("桌宠缩放持久化到 coskin.pet.scale.v1", (await cdp.evaluate(`localStorage.getItem("coskin.pet.scale.v1")`)) === "1.8");
+check("缩放后身体动画仍在（unit 缩放不影响 body transform 动画）", (await cdp.evaluate(`getComputedStyle(document.querySelector("#coskin-pet .cs-pet-body")).animationName`)) !== "none");
+// 气泡不再原地不动：气泡与身体同在缩放单元内，放大后气泡随之位移+等比放大
+// （unit 有 .12s scale 过渡，量几何前要等它落定，否则读到过渡中间值）
+const inUnit = await cdp.evaluate(`(() => { document.querySelector("#coskin-pet .cs-pet-bubble").textContent = "气泡宽度测试文字"; return !!document.querySelector("#coskin-pet .cs-pet-unit .cs-pet-bubble") && !!document.querySelector("#coskin-pet .cs-pet-unit .cs-pet-body"); })()`);
+check("气泡+身体同在缩放单元 .cs-pet-unit 内", inUnit === true);
+await cdp.evaluate(`window.__coskinPetScale(1); "s1"`);
+await new Promise((r) => setTimeout(r, 220));
+const bw1 = await cdp.evaluate(`document.querySelector("#coskin-pet .cs-pet-bubble").getBoundingClientRect().width`);
+await cdp.evaluate(`window.__coskinPetScale(2); "s2"`);
+await new Promise((r) => setTimeout(r, 220));
+const bw2 = await cdp.evaluate(`document.querySelector("#coskin-pet .cs-pet-bubble").getBoundingClientRect().width`);
+check("放大 2× 后气泡也随之变大（修复原地不动/不缩放）", bw2 > bw1 * 1.6, JSON.stringify({ bw1, bw2 }));
+await cdp.evaluate(`window.__coskinPetScale(9); "big"`);
+check("超上限被夹到 2.6", (await cdp.evaluate(`document.getElementById("coskin-pet").style.getPropertyValue("--cs-pet-k")`)) === "2.6");
+await cdp.evaluate(`window.__coskinPetScale(0.1); "tiny"`);
+check("超下限被夹到 0.7", (await cdp.evaluate(`document.getElementById("coskin-pet").style.getPropertyValue("--cs-pet-k")`)) === "0.7");
+// 坑①：放大后 clamp 边界按缩放后尺寸走（不再硬编码 56），大桌宠也不掉出屏幕
+const bigClamp = await cdp.evaluate(`(() => {
+  window.__coskinPetScale(2.6);
+  const p = window.__coskinPlacePet(innerWidth - 2, innerHeight - 2);
+  const m = Math.round(46 * 2.6) + 10;
+  return { x: p.x, y: p.y, bound: innerWidth - m, boundY: innerHeight - m };
+})()`);
+check("放大 2.6× 后按新尺寸夹回（非硬编码 56）", bigClamp.x <= bigClamp.bound && bigClamp.y <= bigClamp.boundY, JSON.stringify(bigClamp));
+// 滑块 input 事件驱动
+await cdp.evaluate(`(() => { const r = document.querySelector("#coskin-pet .cs-pet-size input"); r.value = "1.25"; r.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+check("拖桌宠滑块→缩放单元跟随", (await cdp.evaluate(`document.getElementById("coskin-pet").style.getPropertyValue("--cs-pet-k")`)) === "1.25");
+// 面板：整体等比缩放 #coskin-ui（transform，右下角锚点，不 reflow）
+await cdp.evaluate(`(() => { const r = document.querySelector("#coskin-ui .coskin-size input"); r.value = "1.35"; r.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+check("拖面板滑块→#coskin-ui 设 --cs-panel-k", (await cdp.evaluate(`document.getElementById("coskin-ui").style.getPropertyValue("--cs-panel-k")`)) === "1.35");
+check("面板缩放持久化到 coskin.panel.size.v1", (await cdp.evaluate(`localStorage.getItem("coskin.panel.size.v1")`)) === "1.35");
+check("面板 transform 生效（computed 非 none）", (await cdp.evaluate(`getComputedStyle(document.getElementById("coskin-ui")).transform`)) !== "none");
+// 复位，避免影响后续几何断言
+await cdp.evaluate(`window.__coskinPetScale(1); window.__coskinPanelScale(1); localStorage.removeItem("coskin.pet.scale.v1"); localStorage.removeItem("coskin.panel.size.v1"); localStorage.removeItem("coskin.pet.pos.v1"); "reset"`);
+
 console.log("\n[2] 打开 🎨 面板（含可见度/外观控件）");
 await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-fab").click(); "clicked"`);
 check("面板展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-panel").classList.contains("coskin-open")`)) === true);
@@ -328,6 +368,7 @@ check("主按钮回到基线", s.btnBg === baseline.btnBg, s.btnBg);
 probe = await cdp.evaluate(PROBE_SCRIPT);
 check("无皮肤、无面板", probe?.active === null && probe?.hasUi === false, JSON.stringify(probe));
 check("品牌行/标题板/桌宠已拆除、定时器已清", (await cdp.evaluate(`!document.getElementById("coskin-brand") && !document.getElementById("coskin-pet") && !document.querySelector(".cs-hero-plate") && window.__coskinTimers === undefined`)) === true);
+check("缩放全局闭包已清（__coskinPetScale/__coskinPanelScale）", (await cdp.evaluate(`window.__coskinPetScale === undefined && window.__coskinPanelScale === undefined`)) === true);
 const colResidue = await cdp.evaluate(`(() => { const c = document.querySelector(".home-col"); return c.style.position + "|" + c.style.isolation + "|" + (c.dataset.csCol ?? ""); })()`);
 check("标题列内联样式残留已清（position/isolation/标记）", colResidue === "||", colResidue);
 check("标题接管样式已还原", (await cdp.evaluate(`!document.querySelector("[data-cs-titled]")`)) === true);
