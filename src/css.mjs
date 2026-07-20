@@ -258,8 +258,21 @@ const PANEL_CSS = `
 .cs-glyph { display: block; font-family: "Xingkai SC", "Kaiti SC", "STKaiti", serif; font-size: 42px; line-height: 1.15; font-weight: 700; text-align: center; }
 .cs-glyph.cs-glyph-sm { font-size: 26px; }
 @keyframes coskin-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes coskin-bob-fast { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes coskin-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
+@keyframes coskin-spin { to { transform: rotate(360deg); } }
+@keyframes coskin-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
+@keyframes coskin-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
 #coskin-pet { position: fixed; right: 24px; bottom: 84px; z-index: 2147482999; display: flex; align-items: flex-end; gap: 9px; pointer-events: none; font-family: ui-rounded, system-ui, sans-serif; }
+/* working：呼吸加速 + 一圈转动的光环（用主题强调色） */
+#coskin-pet.cs-working .cs-pet-body { animation: coskin-bob-fast 1.1s ease-in-out infinite; }
+#coskin-pet.cs-working .cs-pet-body::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: var(--cs-accent, #7c6cff);
+  animation: coskin-spin .9s linear infinite;
+}
+#coskin-pet.cs-done .cs-pet-body { animation: coskin-pop .6s ease; }
+#coskin-pet.cs-error .cs-pet-body { animation: coskin-shake .5s ease; box-shadow: 0 8px 18px rgba(0,0,0,.3), 0 0 0 3px var(--cs-pet-err, rgba(220,60,60,.6)); }
 #coskin-pet .cs-pet-body { pointer-events: auto; cursor: grab; }
 #coskin-pet.cs-drag .cs-pet-body { cursor: grabbing; }
 #coskin-pet.cs-drag .cs-pet-bubble { opacity: .35; }
@@ -319,6 +332,9 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
       updateAvail: "有新版本", updateHow: "双击「更新.command」一键升级（会 git pull 并自动重新应用）",
       quotes: ["今天写点什么好？", "小步提交，常回滚。", "先让它跑起来，再让它漂亮。"],
+      working: ["运笔中…", "别急，正在写。", "让子弹飞一会儿。", "思考ing…"],
+      done: ["写完啦！", "这一轮收工。", "看看成果吧。"],
+      error: ["出岔子了，深呼吸。", "红灯别上头。", "回退一步再看。"],
     },
     en: {
       header: "COSKIN · Skins", native: "Official Default", exportBtn: "⇩ Export", delBtn: "🗑 Delete",
@@ -332,6 +348,9 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
       updateAvail: "Update available", updateHow: "Double-click 更新.command / update.bat to upgrade (git pull + auto re-apply).",
       quotes: ["What shall we build today?", "Small commits, easy rollbacks.", "Make it work, then make it pretty."],
+      working: ["Working on it…", "Cooking…", "Give it a sec.", "Thinking…"],
+      done: ["Done!", "Shipped this round.", "Take a look."],
+      error: ["Hit a snag—breathe.", "Red light, stay calm.", "Step back and look."],
     },
   };
   const tr = (k) => (STR[LANG] && STR[LANG][k] != null ? STR[LANG][k] : STR.en[k]);
@@ -1101,14 +1120,52 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     window.addEventListener("mouseup", up);
   });
   window.__coskinTimers.push(setInterval(syncHome, 1200));
+  // idle 台词轮播：只在空闲态跑（working/done 时由状态机接管气泡）
   window.__coskinTimers.push(setInterval(() => {
     if (!state.quotes || !state.quotes.length || !window.__coskinActive) return;
+    if (state.petMode && state.petMode !== "idle") return;
     state.quoteIdx = (state.quoteIdx + 1) % state.quotes.length;
     const b = D.querySelector("#coskin-pet .cs-pet-bubble");
     if (!b) return;
     b.style.opacity = "0";
     setTimeout(() => { b.textContent = state.quotes[state.quoteIdx]; b.style.opacity = "1"; }, 420);
   }, 9000));
+
+  // —— 状态感知桌宠：选择器无关，测对话区文字长度增长判断 Codex 在不在生成 ——
+  const sayState = (arr) => {
+    const b = D.querySelector("#coskin-pet .cs-pet-bubble");
+    if (!b || !arr || !arr.length) return;
+    state.stateQuoteIdx = ((state.stateQuoteIdx || 0) + 1) % arr.length;
+    b.style.opacity = "0";
+    setTimeout(() => { b.textContent = arr[state.stateQuoteIdx]; b.style.opacity = "1"; }, 260);
+  };
+  const setPetMode = (mode) => {
+    const p = D.getElementById("coskin-pet");
+    if (!p) return;
+    p.classList.toggle("cs-working", mode === "working");
+    p.classList.toggle("cs-done", mode === "done");
+    p.classList.toggle("cs-error", mode === "error");
+    state.petMode = mode;
+  };
+  state.petMode = "idle"; state.convLen = -1; state.stable = 0; state.workTick = 0;
+  const petTick = () => {
+    if (!window.__coskinActive || !state.petOn) return;
+    const c = D.querySelector(".thread-scroll-container") || D.querySelector("main.main-surface");
+    const len = c ? c.textContent.length : 0;
+    const growing = state.convLen >= 0 && len > state.convLen + 1; // 文字在增长=正在生成
+    state.convLen = len;
+    if (growing) {
+      state.stable = 0;
+      if (state.petMode !== "working") { setPetMode("working"); sayState(tr("working")); }
+      else if (++state.workTick % 5 === 0) sayState(tr("working")); // 生成中每 ~3.5s 换句
+    } else {
+      state.stable++;
+      if (state.petMode === "working" && state.stable >= 2) { setPetMode("done"); sayState(tr("done")); }
+      else if (state.petMode === "done" && state.stable >= 5) { setPetMode("idle"); } // 交回 idle 轮播
+    }
+  };
+  window.__coskinPetTick = petTick; // 测试用：可确定性驱动一拍
+  window.__coskinTimers.push(setInterval(petTick, 700));
 
   setTheme(ACTIVE);
   return "coskin:ok";

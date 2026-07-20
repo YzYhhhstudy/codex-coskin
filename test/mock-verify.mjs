@@ -143,6 +143,19 @@ const dragResult = await cdp.evaluate(`(() => {
 check("桌宠可拖动且位置已保存", dragResult.left !== "" && dragResult.saved === true, JSON.stringify(dragResult));
 check("靠左时气泡自动翻边", dragResult.flip === true, JSON.stringify(dragResult));
 
+console.log("\n[1c] 状态感知桌宠：文字增长→working，停止→done→idle（选择器无关）");
+await cdp.evaluate(`window.__coskinPetTick(); "t0"`); // 记录初始长度
+await cdp.evaluate(`(() => { const s=document.createElement("span"); s.id="cs-test-stream"; s.textContent="流式生成中的文字".repeat(30); document.querySelector("main.main-surface").appendChild(s); window.__coskinPetTick(); })()`);
+check("文字增长→桌宠进入 working", (await cdp.evaluate(`document.getElementById("coskin-pet").classList.contains("cs-working")`)) === true);
+await new Promise((r) => setTimeout(r, 340)); // 等气泡淡入换字（sayState 有 260ms 延迟）
+const workQuote = await cdp.evaluate(`document.querySelector("#coskin-pet .cs-pet-bubble").textContent`);
+check("working 时气泡换成状态台词", ["运笔中…", "别急，正在写。", "让子弹飞一会儿。", "思考ing…"].includes(workQuote), workQuote);
+await cdp.evaluate(`window.__coskinPetTick(); window.__coskinPetTick(); "stable2"`); // 停止增长两拍
+check("停止增长→桌宠 done", (await cdp.evaluate(`document.getElementById("coskin-pet").classList.contains("cs-done")`)) === true);
+await cdp.evaluate(`for(let i=0;i<5;i++) window.__coskinPetTick(); "toIdle"`);
+check("再几拍→回到 idle（无 working/done 类）", (await cdp.evaluate(`(() => { const p=document.getElementById("coskin-pet"); return !p.classList.contains("cs-working") && !p.classList.contains("cs-done"); })()`)) === true);
+await cdp.evaluate(`document.getElementById("cs-test-stream")?.remove()`); // 清理测试文本
+
 console.log("\n[2] 打开 🎨 面板（含可见度/外观控件）");
 await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-fab").click(); "clicked"`);
 check("面板展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-panel").classList.contains("coskin-open")`)) === true);
