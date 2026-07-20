@@ -88,6 +88,11 @@ glass(16, 1.06) +
 "  box-shadow: 0 8px 24px " + colors.surfaceDeep + "1f, inset 0 1px " + colors.text + "0f !important;\n" +
 glass(20, 1.08) +
 "}\n" +
+"/* 对话框上方的 project/worktree/branch「帽子」与对话框重叠会叠出双层不透明度；\n" +
+"   把这条帽子打透明，让对话框成为唯一的水玻璃面（侧栏底色是本项目 !important 单给的，不受影响）。 */\n" +
+"div:has(.composer-surface-chrome) > [class*=\"side-bar-background\"] {\n" +
+"  background: transparent !important; backdrop-filter: none !important; box-shadow: none !important;\n" +
+"}\n" +
 "[data-app-action-sidebar-thread-active=\"true\"] {\n" +
 "  background: linear-gradient(90deg, " + colors.accent + "38, " + colors.secondary + "22) !important;\n" +
 "  box-shadow: inset 3px 0 0 " + colors.accent + " !important;\n" +

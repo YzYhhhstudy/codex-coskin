@@ -226,6 +226,8 @@ const rawGlass = await cdp.evaluate(`(() => ({
 }))()`);
 check("原图档侧栏无模糊（纯水玻璃）", !/blur/.test(rawGlass.side), rawGlass.side);
 check("原图档对话框无模糊（纯水玻璃）", !/blur/.test(rawGlass.comp), rawGlass.comp);
+const capBg = await cdp.evaluate(`getComputedStyle(document.querySelector(".cap.bg-token-side-bar-background")).backgroundColor`);
+check("对话框上方帽子已打透明（消除双层重叠）", capBg === "rgba(0, 0, 0, 0)" || capBg === "transparent", capBg);
 check("原图档无 cards 配置的主题不做加宽（快捷槽保持官方布局）", (await cdp.evaluate(`!document.querySelector("[data-cs-cards]")`)) === true);
 await cdp.evaluate(`document.querySelector('[data-coskin-theme="xuanzhi"]').click(); "sw"`);
 await new Promise((r2) => setTimeout(r2, 300));
