@@ -122,7 +122,8 @@ glass(20, 1.08) +
 "  border-color: " + colors.accent + "7a !important;\n" +
 "  box-shadow: 0 10px 26px " + colors.accent + "26 !important;\n" +
 "}\n" +
-"[class*=\"home-suggestions\"] button svg { color: " + colors.accent + " !important; }\n" +
+"[class*=\"home-suggestions\"] button svg { width: 34px !important; height: 34px !important; color: " + colors.accent + " !important; }\n" +
+"[class*=\"home-suggestions\"] button svg:not([data-cs-hid]) { margin-bottom: 4px; }\n" +
 "/* 卡片行加宽只在横幅激活时生效（data-cs-cards 标记）——否则会搅坏官方原生布局 */\n" +
 "[data-cs-cards] {\n" +
 "  width: var(--cs-cards-w, auto) !important;\n" +
