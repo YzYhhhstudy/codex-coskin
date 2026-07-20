@@ -227,6 +227,23 @@ check("面板展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .c
 check("可见度控件存在（含原图档）", (await cdp.evaluate(`document.querySelectorAll("[data-coskin-vis]").length`)) === 4);
 await shot("02-panel-open");
 
+console.log("\n[2b] 自定义配色 live 编辑器：拖色轮→实时生成/应用主题、持久化、存为列表主题");
+check("编辑器存在（默认收起）", (await cdp.evaluate(`(() => { const e = document.querySelector("#coskin-ui .coskin-editor"); return !!e && !e.classList.contains("coskin-open"); })()`)) === true);
+check("四个种子色轮 + 深浅切换齐全", (await cdp.evaluate(`document.querySelectorAll("#coskin-ui .coskin-editor .coskin-sw input[type=color]").length`)) === 4);
+await cdp.evaluate(`document.getElementById("coskin-edit-toggle").click(); "open"`);
+check("点标题→编辑器展开", (await cdp.evaluate(`document.querySelector("#coskin-ui .coskin-editor").classList.contains("coskin-open")`)) === true);
+// 拖强调色轮到 #ff2d55 → 实时生成 custom 主题并应用
+await cdp.evaluate(`(() => { const a = document.querySelector("#coskin-ui .coskin-editor .coskin-sw input[type=color]"); a.value = "#ff2d55"; a.dispatchEvent(new Event("input", { bubbles: true })); })()`);
+check("实时生成 custom 主题并成为当前皮肤", (await cdp.evaluate(`window.__coskinActive === "custom" && !!document.querySelector('[data-coskin-theme="custom"]')`)) === true);
+check("编译后的 token 用上了新强调色（--color-token-focus-border=#ff2d55）", (await cdp.evaluate(`getComputedStyle(document.documentElement).getPropertyValue("--color-token-focus-border").trim().toLowerCase()`)) === "#ff2d55");
+check("自定义配色持久化到 coskin.customPalette.v1", (await cdp.evaluate(`(() => { try { return JSON.parse(localStorage.getItem("coskin.customPalette.v1")).palette.accent; } catch { return ""; } })()`)) === "#ff2d55");
+// 存为列表主题 → 进 imported、出现在列表、可被后续重注入恢复
+await cdp.evaluate(`(() => { const n = document.querySelector("#coskin-ui .coskin-name"); n.value = "测试红"; document.querySelector("#coskin-ui .coskin-editor .coskin-act").click(); })()`);
+check("存为主题→进 coskin.imported.v1", (await cdp.evaluate(`(() => { try { return JSON.parse(localStorage.getItem("coskin.imported.v1")).some((e) => e.id.indexOf("imp-mine") === 0 && e.name === "测试红"); } catch { return false; } })()`)) === true);
+check("存的主题出现在列表且成为当前皮肤", (await cdp.evaluate(`!!document.querySelector('[data-coskin-theme^="imp-mine"]') && window.__coskinActive.indexOf("imp-mine") === 0`)) === true);
+// 清理 [2b] 的持久化（custom 槽 + imp-mine 导入项），避免污染后续 section 与重复运行；切回 nebula、收起编辑器
+await cdp.evaluate(`(() => { try { localStorage.removeItem("coskin.customPalette.v1"); const imp = (JSON.parse(localStorage.getItem("coskin.imported.v1") || "[]")).filter((e) => String(e.id).indexOf("imp-mine") !== 0); localStorage.setItem("coskin.imported.v1", JSON.stringify(imp)); } catch {} window.__coskinSetTheme && window.__coskinSetTheme("nebula"); document.getElementById("coskin-edit-toggle").click(); })()`);
+
 console.log("\n[3] 背景可见度：氛围 → 沉浸，表面应变得更透");
 const ambientSidebar = (await cdp.evaluate(SAMPLE)).sidebarBg;
 await cdp.evaluate(`document.querySelector('[data-coskin-vis="immersive"]').click(); "clicked"`);

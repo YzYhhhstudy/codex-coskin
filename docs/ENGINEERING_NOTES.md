@@ -112,14 +112,15 @@
 `coskin.quickSlot.v5`（图片快捷槽）、`coskin.imported.v1`（导入的主题数组）、
 `coskin.hidden.v1`（面板删除=软隐藏的内置/磁盘主题）、`coskin.decorOverride.v1`（顶栏标题编辑覆盖）、
 `coskin.pet.v1`（桌宠开关）、`coskin.pet.pos.v1`（桌宠拖拽位置）、`coskin.pet.image.v1`（自定义形象快照）、
-`coskin.pet.scale.v1`（桌宠大小 0.7–2.6×）、`coskin.panel.size.v1`（悬浮窗大小 0.85–1.6×）。
+`coskin.pet.scale.v1`（桌宠大小 0.7–2.6×）、`coskin.panel.size.v1`（悬浮窗大小 0.85–1.6×）、
+`coskin.customPalette.v1`（自定义配色 live 槽：4 种子色 + 深浅，注入时恢复成 `custom` 主题）。
 
 ## 路线图状态（差异化四条）
 
 | 方向 | 状态 |
 | --- | --- |
 | ① 可读性工程 | ✅ 最扎实卖点：对比度兜底 / 纸色守卫 / 可见度四档（含原图纯水玻璃）/ 阅读面板特权 |
-| ② 分发闭环 | ✅ `.coskin` 单文件 + CLI/面板 导出导入删除 + Codex skill 自动安装 + 一键更新 |
+| ② 分发闭环 | ✅ `.coskin` 单文件 + CLI/面板 导出导入删除 + Codex skill 自动安装 + 一键更新 + **面板内 live 配色编辑器**（4 色轮实时改整套主题→"存为我的主题"进列表，可导出分享） |
 | ③ 跨工具 | ⏳ 未动工。已探明 **Claude Desktop 加固、CDP 端口打不开**（`open --args`/直调二进制都没监听、无 DevTools 日志）→ 现有机制走不通；真正务实目标是 **Cursor/Windsurf/Kiro 等 VS Code(Electron) 分支**（CDP 注入 or VS Code 扩展加载 CSS） |
 | ④ 会动的皮肤 | 🌱 桌宠：主题驱动 + 可拖 + 状态感知(working/done) + 自定义形象 + 连续缩放(滑块 0.7–2.6×)；悬浮窗也可等比缩放(0.85–1.6×)。**下一步接真机 error DOM**（出错变色） |
 

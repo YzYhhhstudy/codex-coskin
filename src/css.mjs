@@ -321,6 +321,16 @@ const PANEL_CSS = `
 #coskin-ui .coskin-size input[type="range"] { flex: 1; height: 4px; accent-color: var(--cs-accent, #7c6cff); cursor: pointer; }
 #coskin-pet .cs-pet-size { display: flex; align-items: center; gap: 6px; padding: 3px 6px 5px; opacity: .9; }
 #coskin-pet .cs-pet-size input[type="range"] { width: 92px; height: 4px; accent-color: var(--cs-accent, #7c6cff); cursor: pointer; }
+#coskin-ui .coskin-editor { display: none; flex-direction: column; gap: 7px; padding: 4px 8px 8px; }
+#coskin-ui .coskin-editor.coskin-open { display: flex; }
+#coskin-ui .coskin-swatches { display: flex; gap: 7px; }
+#coskin-ui .coskin-sw { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; opacity: .72; }
+#coskin-ui .coskin-sw input[type="color"] { width: 100%; height: 26px; border: none; border-radius: 7px; background: transparent; cursor: pointer; padding: 0; }
+#coskin-ui .coskin-sw input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+#coskin-ui .coskin-sw input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.28); border-radius: 6px; }
+#coskin-ui .coskin-edit-row { display: flex; align-items: center; gap: 6px; }
+#coskin-ui .coskin-name { flex: 1; min-width: 0; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 7px; color: inherit; font-size: 12px; padding: 5px 8px; outline: none; }
+#coskin-ui .coskin-name::placeholder { color: rgba(255,255,255,.4); }
 `;
 
 // 注入脚本：主题编译 + 外观同步 + 🎨 面板（主题列表 / 可见度档位 / 深浅翻转 / 图片上传快捷槽）。
@@ -332,6 +342,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   const UPDATE = ${JSON.stringify(updateInfo)};
   const QUICK_KEY = "coskin.quickSlot.v5";
   const IMPORT_KEY = "coskin.imported.v1";
+  const CUSTOM_KEY = "coskin.customPalette.v1";
   const SHARE_FORMAT = "coskin-theme";
   const D = document;
   const HIDDEN_KEY = "coskin.hidden.v1";
@@ -346,6 +357,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       makeImg: "＋ 用图片做主题", uploadShare: "↥ 上传 .coskin 主题文件",
       hint: "点顶部主题名展开列表；选中后底部「导出」分享成 .coskin、「删除」移出列表（内置为隐藏可恢复）。",
       petDrag: "拖我去任何地方", petTap: "点我换形象 · 拖我搬家", petCustom: "＋ 换个形象（图片）", petReset: "恢复默认形象", petSize: "大小", panelSize: "面板大小",
+      editTitle: "🎨 自定义配色（实时）", cAccent: "强调", cSecondary: "辅色", cSurface: "底色", cInk: "墨色",
+      saveTheme: "＋ 存为我的主题", myPalette: "我的配色", savedOk: "✓ 已存进列表",
       processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
@@ -363,6 +376,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       makeImg: "＋ Make theme from image", uploadShare: "↥ Import .coskin file",
       hint: "Click the theme name up top to open the list; pick one, then Export it as .coskin or Delete it (built-ins are hidden, not removed).",
       petDrag: "Drag me anywhere", petTap: "Tap to customize · drag to move", petCustom: "＋ Change look (image)", petReset: "Reset to default", petSize: "Size", panelSize: "Panel size",
+      editTitle: "🎨 Custom colors (live)", cAccent: "Accent", cSecondary: "2nd", cSurface: "Surface", cInk: "Ink",
+      saveTheme: "＋ Save as my theme", myPalette: "My palette", savedOk: "✓ Saved to list",
       processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
@@ -779,6 +794,16 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     updateDecorVisibility();
   };
 
+  // 自定义配色：4 个种子色 + 深浅 → 一套完整主题（渐变底自动合成，和 --spec 兜底同款）
+  const CUSTOM_ID = "custom";
+  const buildCustomEntry = (palette, appearance, name) => {
+    const c = coskinCompileTokens({ appearance: appearance, palette: palette }).colors;
+    const bg = "radial-gradient(1100px 700px at 86% -8%, " + c.accent + "30 0%, transparent 55%), " +
+      "radial-gradient(900px 650px at -6% 108%, " + c.secondary + "26 0%, transparent 60%), " +
+      "linear-gradient(160deg, " + c.surfaceDeep + " 0%, " + c.surface + " 55%, " + c.surfaceRaised + " 100%)";
+    return { id: CUSTOM_ID, name: name || tr("myPalette"), accent: palette.accent, appearance: appearance, spec: { palette: palette }, bg: bg };
+  };
+
   try {
     const raw = localStorage.getItem(QUICK_KEY);
     if (raw) {
@@ -790,6 +815,13 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   for (const e of loadImported()) {
     if (e && e.id && e.spec && typeof e.bg === "string" && !THEMES.some((t) => t.id === e.id)) THEMES.push(e);
   }
+  // 上次编辑的自定义配色（live 槽，注入时恢复，和快捷槽一样）
+  try {
+    const cp = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "null");
+    if (cp && cp.palette && cp.palette.accent && !THEMES.some((t) => t.id === CUSTOM_ID)) {
+      THEMES.push(buildCustomEntry(cp.palette, cp.appearance === "light" ? "light" : "dark", cp.name));
+    }
+  } catch {}
   // 被隐藏的内置/磁盘主题（面板里"删除"的软删除）从列表滤掉
   const hiddenSet = new Set(loadHidden());
   for (let i = THEMES.length - 1; i >= 0; i--) if (hiddenSet.has(THEMES[i].id)) THEMES.splice(i, 1);
@@ -881,6 +913,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     if (idx < 0) return { kind: "none" };
     let kind;
     if (id === "quick") { try { localStorage.removeItem(QUICK_KEY); } catch {} kind = "removed"; }
+    else if (id === CUSTOM_ID) { try { localStorage.removeItem(CUSTOM_KEY); } catch {} kind = "removed"; }
     else if (id.indexOf("imp-") === 0) { saveImported(loadImported().filter((e) => e.id !== id)); kind = "removed"; }
     else { const h = loadHidden(); if (!h.includes(id)) { h.push(id); saveHidden(h); } kind = "hidden"; }
     THEMES.splice(idx, 1);
@@ -1047,6 +1080,77 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   });
   panel.appendChild(importBtn);
   panel.appendChild(shareInput);
+
+  // —— 自定义配色 live 编辑器：拖色轮实时改整套主题，10 秒做出"我自己的"皮 ——
+  const editorBox = D.createElement("div"); editorBox.className = "coskin-editor";
+  const norm = (v, d) => (/^#[0-9a-fA-F]{6}$/.test(v || "") ? v : d);
+  const mkSwatch = (labelKey) => {
+    const wrap = D.createElement("div"); wrap.className = "coskin-sw";
+    const inp = D.createElement("input"); inp.type = "color";
+    wrap.appendChild(inp); wrap.appendChild(Object.assign(D.createElement("span"), { textContent: tr(labelKey) }));
+    return { wrap: wrap, inp: inp };
+  };
+  const swAccent = mkSwatch("cAccent"), swSecondary = mkSwatch("cSecondary"), swSurface = mkSwatch("cSurface"), swInk = mkSwatch("cInk");
+  const swatches = D.createElement("div"); swatches.className = "coskin-swatches";
+  for (const s of [swAccent, swSecondary, swSurface, swInk]) swatches.appendChild(s.wrap);
+  editorBox.appendChild(swatches);
+  let editApp = "dark";
+  const appRow = D.createElement("div"); appRow.className = "coskin-edit-row";
+  appRow.appendChild(Object.assign(D.createElement("span"), { className: "coskin-ctl-label", textContent: tr("appearance") }));
+  const appDark = Object.assign(D.createElement("button"), { className: "coskin-mini", textContent: tr("dark") });
+  const appLight = Object.assign(D.createElement("button"), { className: "coskin-mini", textContent: tr("light") });
+  const syncAppBtns = () => { appDark.classList.toggle("coskin-on", editApp === "dark"); appLight.classList.toggle("coskin-on", editApp === "light"); };
+  appRow.appendChild(appDark); appRow.appendChild(appLight);
+  editorBox.appendChild(appRow);
+  const saveRow = D.createElement("div"); saveRow.className = "coskin-edit-row";
+  const nameIn = D.createElement("input"); nameIn.type = "text"; nameIn.className = "coskin-name"; nameIn.placeholder = tr("myPalette");
+  const saveBtn = Object.assign(D.createElement("button"), { className: "coskin-act", textContent: tr("saveTheme") });
+  saveRow.appendChild(nameIn); saveRow.appendChild(saveBtn);
+  editorBox.appendChild(saveRow);
+  const editToggle = makeItem(null, tr("editTitle"), null, () => {
+    const open = !editorBox.classList.contains("coskin-open");
+    editorBox.classList.toggle("coskin-open", open);
+    if (open) seedEditor();
+  });
+  editToggle.id = "coskin-edit-toggle";
+  panel.appendChild(editToggle);
+  panel.appendChild(editorBox);
+
+  const readPalette = () => ({ accent: swAccent.inp.value, secondary: swSecondary.inp.value, surfaceTint: swSurface.inp.value, ink: swInk.inp.value });
+  const liveApply = () => {
+    const palette = readPalette();
+    const entry = buildCustomEntry(palette, editApp, tr("myPalette"));
+    const i = THEMES.findIndex((t) => t.id === CUSTOM_ID);
+    if (i >= 0) THEMES.splice(i, 1, entry); else THEMES.push(entry);
+    renderThemeItems();
+    setTheme(CUSTOM_ID);
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ palette: palette, appearance: editApp, name: tr("myPalette") })); } catch {}
+  };
+  const seedEditor = () => {
+    const act = THEMES.find((t) => t.id === window.__coskinActive);
+    const p = (act && act.spec && act.spec.palette) || {};
+    const light = act ? act.appearance === "light" : false;
+    swAccent.inp.value = norm(p.accent, "#7c6cff");
+    swSecondary.inp.value = norm(p.secondary, "#4ac2b0");
+    swSurface.inp.value = norm(p.surfaceTint, light ? "#efe9df" : "#1b1e2e");
+    swInk.inp.value = norm(p.ink, light ? "#20242c" : "#f2f4ff");
+    editApp = light ? "light" : "dark"; syncAppBtns();
+  };
+  for (const s of [swAccent, swSecondary, swSurface, swInk]) s.inp.addEventListener("input", liveApply);
+  appDark.addEventListener("click", () => { editApp = "dark"; syncAppBtns(); liveApply(); });
+  appLight.addEventListener("click", () => { editApp = "light"; syncAppBtns(); liveApply(); });
+  saveBtn.addEventListener("click", () => {
+    const palette = readPalette();
+    const name = (nameIn.value || "").trim() || tr("myPalette");
+    let base = "imp-mine", id = base, n = 2;
+    while (THEMES.some((x) => x.id === id)) { id = base + "-" + n; n++; }
+    const entry = buildCustomEntry(palette, editApp, name); entry.id = id;
+    const list = loadImported(); list.push(entry); saveImported(list);
+    THEMES.push(entry); renderThemeItems(); setTheme(id);
+    saveBtn.textContent = tr("savedOk"); setTimeout(() => { saveBtn.textContent = tr("saveTheme"); }, 1800);
+    nameIn.value = "";
+  });
+  seedEditor();
 
   // 面板大小滑块：整体等比缩放 #coskin-ui（transform，右下角为锚点，不 reflow 不崩版）
   const panelSizeRow = D.createElement("div"); panelSizeRow.className = "coskin-size";
