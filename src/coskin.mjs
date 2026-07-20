@@ -20,6 +20,14 @@ import { coskinCompileTokens } from "./tokens.mjs";
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 const run = promisify(execFile);
+const STATE_FILE = join(ROOT, ".coskin-state.json");
+
+async function rememberTheme(id) {
+  try { await writeFile(STATE_FILE, JSON.stringify({ lastTheme: id }) + "\n"); } catch {}
+}
+async function lastTheme() {
+  try { return JSON.parse(await readFile(STATE_FILE, "utf8")).lastTheme || null; } catch { return null; }
+}
 const REPO_RAW = "https://raw.githubusercontent.com/YzYhhhstudy/codex-coskin/master/package.json";
 
 // ---------- 版本 / 更新 ----------
@@ -207,9 +215,24 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   const payload = await switcherPayload(theme);
   const updateInfo = await getUpdateInfo();
   const { applied } = await injectEverywhere(port, buildInjectionScript(payload, theme.id, updateInfo));
+  await rememberTheme(theme.id);
   log(`✅ 已应用「${theme.name}」（${applied} 个窗口）。右下角 🎨 按钮可随时一键切换或还原。`);
   if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「更新.command」一键升级。`);
   return theme;
+}
+
+// 一键恢复：重新应用上次用过的主题（关机/关 Codex 后最快的上肤方式）。
+// Codex 已关闭时会直接以调试模式启动并上肤（无运行实例→不打断，无需确认）。
+async function resume(port, confirmRestart) {
+  const themes = await loadAllThemes();
+  const last = await lastTheme();
+  const target =
+    (last && themes.find((t) => t.id === last)) ||
+    themes.find((t) => t.kind === "builtin") ||
+    themes[0];
+  if (!target) throw new Error("没有可用主题，先在菜单里做一个吧。");
+  log(`一键上肤：${target.name}${last === target.id ? "（上次用的）" : "（默认）"}`);
+  await applyTheme(port, target.id, confirmRestart);
 }
 
 async function update(port, confirmRestart) {
@@ -573,6 +596,8 @@ try {
     if (!file) throw new Error("用法：import <文件.coskin.json>");
     const id = await importThemeFile(file);
     log(`应用它：node src/coskin.mjs apply ${id}（或菜单里直接选）`);
+  } else if (command === "resume") {
+    await resume(port, cliConfirm);
   } else if (command === "update") {
     await update(port, cliConfirm);
   } else if (command === "restore") {

@@ -35,23 +35,49 @@
 
 ## 安装（第一次用）
 
-需要 macOS + [Node.js 22+](https://nodejs.org) + Codex Desktop。
+前置：[Node.js 22+](https://nodejs.org) + 已装好的 Codex Desktop。零依赖、不用 `npm install`。
+
+**先把仓库拿下来（两个平台通用）：**
 
 ```bash
 git clone https://github.com/YzYhhhstudy/codex-coskin.git
+```
+
+### macOS
+
+```bash
 cd codex-coskin
-# macOS 会给下载的脚本加隔离标记，先解除（只需一次）：
+# macOS 会给下载的脚本加隔离标记，解除一次（否则双击会被拦）：
 xattr -dr com.apple.quarantine .
 ```
 
-然后**双击 `双击换肤.command`**（或终端 `node src/coskin.mjs menu`）。零依赖、不用 `npm install`。
+然后**双击 `双击换肤.command`**（第一次可能要右键 →「打开」放行一次）。
+
+### Windows
+
+进入 `codex-coskin` 文件夹，**双击 `双击换肤.bat`**。
+（目前支持 ChatGPT 独立安装版；Microsoft Store 版暂不支持。Windows 端为社区代码、
+尚未在真机充分验证，遇到问题欢迎提 issue。）
+
+> 不想双击、想用命令行：`node src/coskin.mjs menu`（Windows：`node src\coskin.mjs menu`）。
 
 ## 傻瓜式上手（3 步）
 
-1. **双击 `双击换肤.command`**（第一次 macOS 可能提示右键 → 打开）。
+1. **双击** `双击换肤.command`（macOS）/ `双击换肤.bat`（Windows）。
 2. 在菜单里**输入主题编号，回车**。
 3. 如果 Codex 正在运行，工具会先问你「现在重启它吗？」——**输 `y` 回车**即可
    （对话记录会保留，Codex 自动恢复；不同意就什么都不会动）。
+
+## 每天怎么最快上肤（关机 / 关过 Codex 之后）
+
+皮肤只在当前会话有效——正常重启 Codex 就回到官方原样（这是安全设计，不装常驻进程）。
+所以关机或关过 Codex 后想再上肤，**双击 `一键换肤.command`（macOS）/ `一键换肤.bat`（Windows）**：
+它直接把你**上次用过的主题**重新贴上，不用再进菜单选。
+
+- Codex 当时是**关着**的 → 它顺手以调试模式打开 Codex 并上肤，**零提示、一步到位**。
+- Codex 当时**开着** → 只问一句「重启吗？」，输 `y` 即可。
+
+> 记忆点：第一次或想换主题用「双击换肤」（进菜单）；之后每天回来用「一键换肤」（直接上上次的）。
 
 装完后 Codex **右下角会出现一个 🎨 按钮**：点开就是主题面板，内置主题之间**免重启秒切**，
 随时可点「官方原生」还原。面板下方还有两组即点即变的旋钮：

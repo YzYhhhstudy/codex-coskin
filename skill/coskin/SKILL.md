@@ -28,6 +28,7 @@ node __COSKIN_ROOT__/src/coskin.mjs apply --image <图片> [--name 名字]   # �
 node __COSKIN_ROOT__/src/coskin.mjs apply --spec <spec.json>            # 一句话主题（spec 见下）
 node __COSKIN_ROOT__/src/coskin.mjs import <文件.coskin.json>           # 导入别人分享的主题
 node __COSKIN_ROOT__/src/coskin.mjs export <id> [--out 路径]            # 导出主题为单文件分享
+node __COSKIN_ROOT__/src/coskin.mjs resume               # 一键重上"上次用过的主题"（日常最快上肤）
 node __COSKIN_ROOT__/src/coskin.mjs update               # git pull 拉最新 + 自动重新应用
 node __COSKIN_ROOT__/src/coskin.mjs restore              # 还原官方界面
 node __COSKIN_ROOT__/src/coskin.mjs status               # 只读状态

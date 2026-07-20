@@ -3,3 +3,4 @@ themes/custom/
 coskin-shot-*.png
 .DS_Store
 output/
+.coskin-state.json
