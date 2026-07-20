@@ -6,10 +6,9 @@ where node >nul 2>nul || (
   pause
   exit /b 1
 )
-rem 顺手安装/更新 Codex 技能（幂等）
+rem 安装 Codex 技能（先查是否已装且路径正确，是则跳过）
 set "DST=%USERPROFILE%\.agents\skills\coskin"
-if not exist "%DST%" mkdir "%DST%"
-powershell -NoProfile -Command "(Get-Content -Raw '%~dp0skill\coskin\SKILL.md') -replace '__COSKIN_ROOT__', ('%~dp0'.TrimEnd('\')) | Set-Content -Encoding UTF8 '%DST%\SKILL.md'" 2>nul && echo ✅ Codex 技能已就绪
+powershell -NoProfile -Command "$f=Join-Path $env:DST 'SKILL.md'; $root=('%~dp0'.TrimEnd('\')); if ((Test-Path $f) -and (Select-String -Path $f -SimpleMatch $root -Quiet)) { Write-Host '✅ Codex 技能已安装' } else { New-Item -ItemType Directory -Force -Path $env:DST | Out-Null; (Get-Content -Raw '%~dp0skill\coskin\SKILL.md') -replace '__COSKIN_ROOT__', $root | Set-Content -Encoding UTF8 $f; Write-Host '✅ 已安装 Codex 技能' }"
 echo.
 node src\coskin.mjs menu
 echo.

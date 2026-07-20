@@ -17,11 +17,16 @@ if ! command -v node >/dev/null 2>&1; then
   echo "按回车关闭…"; read -r; exit 1
 fi
 
-# 顺手安装/更新 Codex 技能（幂等，装过也没关系）
+# 安装 Codex 技能（先查是否已装且路径正确，是则跳过，避免重复写）
 DST="$HOME/.agents/skills/coskin"
-mkdir -p "$DST"
-sed "s|__COSKIN_ROOT__|$DIR|g" "$DIR/skill/coskin/SKILL.md" > "$DST/SKILL.md" 2>/dev/null && \
-  echo "✅ Codex 技能已就绪（可直接对 Codex 说「用 coskin 换个主题」）" || true
+if [ -f "$DST/SKILL.md" ] && grep -qF "$DIR" "$DST/SKILL.md" 2>/dev/null; then
+  echo "✅ Codex 技能已安装（可直接对 Codex 说「用 coskin 换个主题」）"
+else
+  mkdir -p "$DST"
+  if sed "s|__COSKIN_ROOT__|$DIR|g" "$DIR/skill/coskin/SKILL.md" > "$DST/SKILL.md" 2>/dev/null; then
+    echo "✅ 已安装 Codex 技能（可直接对 Codex 说「用 coskin 换个主题」）"
+  fi
+fi
 echo ""
 
 node "$DIR/src/coskin.mjs" menu

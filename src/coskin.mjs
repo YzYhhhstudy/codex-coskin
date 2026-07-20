@@ -20,7 +20,6 @@ import { coskinCompileTokens } from "./tokens.mjs";
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 const run = promisify(execFile);
-const STATE_FILE = join(ROOT, ".coskin-state.json");
 
 async function rememberTheme(id) {
   try { await writeFile(STATE_FILE, JSON.stringify({ lastTheme: id }) + "\n"); } catch {}
@@ -62,6 +61,7 @@ async function currentActiveTheme(port) {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const THEMES_DIR = join(ROOT, "themes");
 const CUSTOM_DIR = join(THEMES_DIR, "custom");
+const STATE_FILE = join(ROOT, ".coskin-state.json"); // 定义须在 ROOT 之后
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MIME = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
