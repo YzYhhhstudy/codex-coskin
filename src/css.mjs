@@ -328,6 +328,8 @@ const PANEL_CSS = `
 #coskin-ui .coskin-sw input[type="color"] { width: 100%; height: 26px; border: none; border-radius: 7px; background: transparent; cursor: pointer; padding: 0; }
 #coskin-ui .coskin-sw input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 #coskin-ui .coskin-sw input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.28); border-radius: 6px; }
+#coskin-ui .coskin-hex { width: 100%; box-sizing: border-box; text-align: center; font: 600 10px/1.2 ui-monospace, "SF Mono", Menlo, monospace; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 5px; color: inherit; padding: 2px 0; outline: none; }
+#coskin-ui .coskin-hex:focus { border-color: rgba(255,255,255,.4); }
 #coskin-ui .coskin-edit-row { display: flex; align-items: center; gap: 6px; }
 #coskin-ui .coskin-name { flex: 1; min-width: 0; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 7px; color: inherit; font-size: 12px; padding: 5px 8px; outline: none; }
 #coskin-ui .coskin-name::placeholder { color: rgba(255,255,255,.4); }
@@ -359,6 +361,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       petDrag: "拖我去任何地方", petTap: "点我换形象 · 拖我搬家", petCustom: "＋ 换个形象（图片）", petReset: "恢复默认形象", petSize: "大小", panelSize: "面板大小",
       editTitle: "🎨 自定义配色（实时）", cAccent: "强调", cSecondary: "辅色", cSurface: "底色", cInk: "墨色",
       saveTheme: "＋ 存为我的主题", myPalette: "我的配色", savedOk: "✓ 已存进列表",
+      randomize: "🎲 随机", resetPal: "↺ 复位",
       processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
@@ -378,6 +381,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       petDrag: "Drag me anywhere", petTap: "Tap to customize · drag to move", petCustom: "＋ Change look (image)", petReset: "Reset to default", petSize: "Size", panelSize: "Panel size",
       editTitle: "🎨 Custom colors (live)", cAccent: "Accent", cSecondary: "2nd", cSurface: "Surface", cInk: "Ink",
       saveTheme: "＋ Save as my theme", myPalette: "My palette", savedOk: "✓ Saved to list",
+      randomize: "🎲 Random", resetPal: "↺ Reset",
       processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
@@ -1084,15 +1088,30 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   // —— 自定义配色 live 编辑器：拖色轮实时改整套主题，10 秒做出"我自己的"皮 ——
   const editorBox = D.createElement("div"); editorBox.className = "coskin-editor";
   const norm = (v, d) => (/^#[0-9a-fA-F]{6}$/.test(v || "") ? v : d);
+  const hslToHex = (h, s, l) => {
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => { const k = (n + h / 30) % 12; const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); return Math.round(255 * c).toString(16).padStart(2, "0"); };
+    return "#" + f(0) + f(8) + f(4);
+  };
   const mkSwatch = (labelKey) => {
     const wrap = D.createElement("div"); wrap.className = "coskin-sw";
     const inp = D.createElement("input"); inp.type = "color";
-    wrap.appendChild(inp); wrap.appendChild(Object.assign(D.createElement("span"), { textContent: tr(labelKey) }));
-    return { wrap: wrap, inp: inp };
+    const hex = D.createElement("input"); hex.type = "text"; hex.className = "coskin-hex"; hex.maxLength = 7; hex.spellcheck = false;
+    wrap.appendChild(inp);
+    wrap.appendChild(Object.assign(D.createElement("span"), { textContent: tr(labelKey) }));
+    wrap.appendChild(hex);
+    const sw = { wrap: wrap, inp: inp, hex: hex, syncHex: () => { hex.value = inp.value; } };
+    inp.addEventListener("input", sw.syncHex);
+    hex.addEventListener("input", () => {
+      let v = hex.value.trim(); if (v && v[0] !== "#") v = "#" + v;
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) { inp.value = v.toLowerCase(); liveApply(); } // 合法才应用
+    });
+    return sw;
   };
   const swAccent = mkSwatch("cAccent"), swSecondary = mkSwatch("cSecondary"), swSurface = mkSwatch("cSurface"), swInk = mkSwatch("cInk");
+  const SWS = [swAccent, swSecondary, swSurface, swInk];
   const swatches = D.createElement("div"); swatches.className = "coskin-swatches";
-  for (const s of [swAccent, swSecondary, swSurface, swInk]) swatches.appendChild(s.wrap);
+  for (const s of SWS) swatches.appendChild(s.wrap);
   editorBox.appendChild(swatches);
   let editApp = "dark";
   const appRow = D.createElement("div"); appRow.className = "coskin-edit-row";
@@ -1102,6 +1121,11 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   const syncAppBtns = () => { appDark.classList.toggle("coskin-on", editApp === "dark"); appLight.classList.toggle("coskin-on", editApp === "light"); };
   appRow.appendChild(appDark); appRow.appendChild(appLight);
   editorBox.appendChild(appRow);
+  const toolRow = D.createElement("div"); toolRow.className = "coskin-edit-row";
+  const randBtn = Object.assign(D.createElement("button"), { className: "coskin-mini", textContent: tr("randomize") });
+  const resetBtn = Object.assign(D.createElement("button"), { className: "coskin-mini", textContent: tr("resetPal") });
+  toolRow.appendChild(randBtn); toolRow.appendChild(resetBtn);
+  editorBox.appendChild(toolRow);
   const saveRow = D.createElement("div"); saveRow.className = "coskin-edit-row";
   const nameIn = D.createElement("input"); nameIn.type = "text"; nameIn.className = "coskin-name"; nameIn.placeholder = tr("myPalette");
   const saveBtn = Object.assign(D.createElement("button"), { className: "coskin-act", textContent: tr("saveTheme") });
@@ -1126,6 +1150,13 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     setTheme(CUSTOM_ID);
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ palette: palette, appearance: editApp, name: tr("myPalette") })); } catch {}
   };
+  let lastSeed = null; // 打开编辑器那一刻的配色，「复位」回到这里
+  const applyPalette = (pal) => {
+    swAccent.inp.value = pal.accent; swSecondary.inp.value = pal.secondary;
+    swSurface.inp.value = pal.surfaceTint; swInk.inp.value = pal.ink;
+    for (const s of SWS) s.syncHex();
+    liveApply();
+  };
   const seedEditor = () => {
     const act = THEMES.find((t) => t.id === window.__coskinActive);
     const p = (act && act.spec && act.spec.palette) || {};
@@ -1135,10 +1166,22 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     swSurface.inp.value = norm(p.surfaceTint, light ? "#efe9df" : "#1b1e2e");
     swInk.inp.value = norm(p.ink, light ? "#20242c" : "#f2f4ff");
     editApp = light ? "light" : "dark"; syncAppBtns();
+    for (const s of SWS) s.syncHex();
+    lastSeed = readPalette();
   };
-  for (const s of [swAccent, swSecondary, swSurface, swInk]) s.inp.addEventListener("input", liveApply);
+  for (const s of SWS) s.inp.addEventListener("input", liveApply);
   appDark.addEventListener("click", () => { editApp = "dark"; syncAppBtns(); liveApply(); });
   appLight.addEventListener("click", () => { editApp = "light"; syncAppBtns(); liveApply(); });
+  randBtn.addEventListener("click", () => {
+    const h = Math.floor(Math.random() * 360);
+    applyPalette({
+      accent: hslToHex(h, 0.72, 0.62),
+      secondary: hslToHex((h + 140 + Math.floor(Math.random() * 80)) % 360, 0.6, 0.55),
+      surfaceTint: editApp === "light" ? "#efe9df" : "#171a26",
+      ink: editApp === "light" ? "#20242c" : "#f2f4ff",
+    });
+  });
+  resetBtn.addEventListener("click", () => { if (lastSeed) applyPalette(lastSeed); });
   saveBtn.addEventListener("click", () => {
     const palette = readPalette();
     const name = (nameIn.value || "").trim() || tr("myPalette");
