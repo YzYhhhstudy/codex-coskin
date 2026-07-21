@@ -195,6 +195,38 @@ async function askYesNo(question) {
 const RESTART_QUESTION =
   "换肤需要把 Codex 重启到本机调试模式（对话记录会保留，Codex 会自动恢复）。现在重启它吗？";
 
+// 无窗口启动器（.app / .vbs）没有终端可交互：确认、报错、完成提示都走系统原生弹窗。
+async function guiConfirm(question) {
+  try {
+    if (process.platform === "darwin") {
+      const { stdout } = await run("osascript", ["-e",
+        `display dialog ${JSON.stringify(question)} with title "CoSkin" buttons {"取消", "重启"} default button "重启" cancel button "取消"`]);
+      return /重启/.test(stdout);
+    }
+    if (process.platform === "win32") {
+      const { stdout } = await run("powershell", ["-NoProfile", "-Command",
+        `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${JSON.stringify(question)}, 'CoSkin', 'YesNo', 'Question')`]);
+      return /Yes/i.test(stdout);
+    }
+  } catch { /* 用户点了取消 = 非零退出，按「不重启」处理 */ }
+  return false;
+}
+async function guiAlert(message) {
+  try {
+    if (process.platform === "darwin") {
+      await run("osascript", ["-e", `display dialog ${JSON.stringify(message)} with title "CoSkin" buttons {"好"} default button "好"`]);
+    } else if (process.platform === "win32") {
+      await run("powershell", ["-NoProfile", "-Command",
+        `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${JSON.stringify(message)}, 'CoSkin')`]);
+    }
+  } catch {}
+}
+async function guiNotify(message) {
+  try {
+    if (process.platform === "darwin") await run("osascript", ["-e", `display notification ${JSON.stringify(message)} with title "CoSkin"`]);
+  } catch {}
+}
+
 async function injectEverywhere(port, script) {
   const results = await withPageTargets(port, async (cdp) => {
     const probe = await cdp.evaluate(PROBE_SCRIPT);
@@ -588,8 +620,11 @@ const args = process.argv.slice(2);
 const command = args[0] ?? "menu";
 const port = Number(argValue(args, "--port") ?? process.env.COSKIN_PORT ?? DEFAULT_PORT);
 
-// --restart-ok 表示提前授权重启；否则运行中的 Codex 只会在终端里当面问你
-const cliConfirm = args.includes("--restart-ok") ? async () => true : () => askYesNo(RESTART_QUESTION);
+// --gui：无终端的启动器（.app / .vbs）用系统弹窗确认/报错；--restart-ok：提前授权重启（无人值守）
+const GUI = args.includes("--gui");
+const cliConfirm = args.includes("--restart-ok")
+  ? async () => true
+  : (GUI ? () => guiConfirm(RESTART_QUESTION) : () => askYesNo(RESTART_QUESTION));
 
 try {
   if (command === "menu") {
@@ -626,6 +661,7 @@ try {
     log(`应用它：node src/coskin.mjs apply ${id}（或菜单里直接选）`);
   } else if (command === "resume") {
     await resume(port, cliConfirm, args.includes("--update"));
+    if (GUI) await guiNotify("✅ 已换肤，Codex 这就带皮肤打开。");
   } else if (command === "update") {
     await update(port, cliConfirm);
   } else if (command === "restore") {
@@ -640,6 +676,7 @@ try {
   }
 } catch (error) {
   console.error(`❌ ${error.message}`);
+  if (GUI) await guiAlert("CoSkin 换肤失败：" + error.message);
   process.exit(1);
 }
 // CDP WebSocket 的关闭握手偶发挂起会拖住事件循环，命令跑完显式退出

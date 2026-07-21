@@ -1,0 +1,38 @@
+#!/bin/zsh
+# CoSkin.app —— 双击（或点 Dock 图标）= 打开带皮肤的 Codex：更新 + 恢复你上次用的主题。
+# 无终端窗口；需要重启 Codex 确认时会弹系统对话框（--gui）。换主题/自定义配色都在 Codex 右下角 🎨 面板。
+# 这个 .app 放在仓库文件夹（codex-coskin/）里，靠自身位置找到仓库根。
+
+SELF="$(cd "$(dirname "$0")" && pwd)"           # …/CoSkin.app/Contents/MacOS
+DIR="$(cd "$SELF/../../.." && pwd)"             # 仓库根（codex-coskin/）
+
+# 找 node：GUI 启动的 App 环境 PATH 很干净，手动补 nvm / homebrew / volta / fnm
+if ! command -v node >/dev/null 2>&1; then
+  export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi
+if ! command -v node >/dev/null 2>&1; then
+  for p in /opt/homebrew/bin /usr/local/bin "$HOME/.volta/bin"; do
+    [ -x "$p/node" ] && { PATH="$p:$PATH"; break; }
+  done
+fi
+if ! command -v node >/dev/null 2>&1; then
+  osascript -e 'display dialog "没找到 Node.js（需要 22 或更新版本）。装好后再打开我。
+
+下载：https://nodejs.org" with title "CoSkin" buttons {"好"} default button "好"'
+  exit 1
+fi
+
+# 装 / 自愈更新 Codex 技能（幂等：已装且路径对则跳过）
+DST="$HOME/.agents/skills/coskin"
+if ! { [ -f "$DST/SKILL.md" ] && grep -qF "$DIR" "$DST/SKILL.md" 2>/dev/null; }; then
+  mkdir -p "$DST"
+  # 先写临时文件再原子替换：sed 失败时不会把已装好的技能截空
+  if sed "s|__COSKIN_ROOT__|$DIR|g" "$DIR/skill/coskin/SKILL.md" > "$DST/SKILL.md.tmp" 2>/dev/null; then
+    mv "$DST/SKILL.md.tmp" "$DST/SKILL.md"
+  else
+    rm -f "$DST/SKILL.md.tmp"
+  fi
+fi
+
+# 打开带皮肤的 Codex：更新 + 恢复上次主题；确认 / 报错 / 完成提示都走系统弹窗
+exec node "$DIR/src/coskin.mjs" resume --update --gui

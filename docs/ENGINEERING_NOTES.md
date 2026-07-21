@@ -26,6 +26,10 @@
   `[class*="bg-token-side-bar-background"][class*="-mx-px"][class*="flex-nowrap"]`，真机命中 1 个。
 - **绝不静默重启用户在用的应用**：检测到 Codex 运行中必须经 `confirmRestart` 当面同意；
   非交互环境（无 TTY）一律拒绝、不打断。这是安全底线，也是产品同意门的由来。
+  无终端的启动器（`.app` / `.vbs`）用 `--gui`：确认走系统弹窗（mac osascript / win PowerShell MsgBox），
+  报错也弹窗、完成发通知——否则窗口一关用户什么都看不到。
+- **`sed "s|..." src > dst` 会先把 dst 截空再跑 sed**：一旦 src 不存在 / sed 失败，dst 就被清成 0 字节（`|| true` 还会吞掉错误）。
+  真机踩过：一次 DIR 传错让已装好的 `SKILL.md` 被截空。装/改关键文件一律**先写 `.tmp` 再 `mv` 原子替换**，失败就 `rm .tmp`、绝不碰原件。
 - **模拟页验证 ≠ 真机**：mock 锁回归（60+ 断言、还原逐项回基线），但真机 DOM 总有惊喜。
   每次真机反馈 → 先只读侦察 → 再把新结构+新断言补进 mock。
 
@@ -110,7 +114,12 @@
 - 合并动机：面板功能追平后，「双击换肤(菜单)」和「一键换肤(resume)」的差别消失——一个文件即 启动+更新+使用。
 - **为什么不能"开 Codex 就自动上肤"**：正常启动的 Codex 没有调试端口，CDP 无从注入（同 Claude Desktop 的加固边界）。
   只能反过来——让「双击换肤」当**你点开 Codex 的那个入口**（它替你以调试模式启动带皮肤的 Codex）。
-  想更像"原生启动"可把它打包成可钉 Dock 的 `.app`；常驻守护进程能做但违背「仅会话 / 不常驻 / 不静默重启」三铁律，不做。
+  常驻守护进程能做但违背「仅会话 / 不常驻 / 不静默重启」三铁律，不做。
+- **`.app` 清爽启动器（v0.28.0）**：`CoSkin.app`（放仓库内，靠自身位置 `../../..` 找仓库根）= 无终端窗口地
+  `resume --update --gui`，可钉 Dock。`LSUIElement=true` 让它跑完不留 Dock/切换器残影。node 发现要手动补
+  nvm/homebrew/volta（GUI App 的 PATH 很干净），找不到 node 直接 osascript 弹窗。ZIP 下载会丢 +x 位、须 `chmod +x`。
+- **Windows 没有 `.app`**：等价是 `.bat` 的快捷方式（运行方式=最小化 + 钉任务栏）。`--gui` 的 PowerShell MsgBox 已备好，
+  真正的无窗口 `.vbs` 启动器留待真机验证（Windows 端整体尚未在真机充分验证）。
 
 ## localStorage 键一览（页面侧持久化）
 
