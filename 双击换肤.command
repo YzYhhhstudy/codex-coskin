@@ -1,5 +1,7 @@
 #!/bin/zsh
-# CoSkin 主入口：第一次双击会自动装好 Codex 技能，然后打开换肤菜单
+# CoSkin 唯一入口：双击我 = 启动 Codex（带皮肤）+ 更新到最新 + 恢复你上次用的主题。
+# 换主题 / 自定义配色 / 导入导出，全在 Codex 右下角的 🎨 面板里做（不再需要终端菜单）。
+# 第一次双击还会自动把 CoSkin 装成 Codex 技能。
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -29,7 +31,9 @@ else
 fi
 echo ""
 
-node "$DIR/src/coskin.mjs" menu
+# 启动 Codex（关着会自动以调试模式打开）+ 拉最新代码 + 重上你上次用过的主题
+node "$DIR/src/coskin.mjs" resume --update
 echo ""
-echo "已退出 CoSkin。按回车关闭窗口…"
+echo "🎨 换主题 / 自定义配色 / 导入导出，点 Codex 右下角的 🎨 按钮就行。"
+echo "按回车关闭窗口…"
 read -r

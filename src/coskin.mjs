@@ -235,7 +235,7 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   await rememberTheme(theme.id);
   log(`✅ 已应用「${theme.name}」（${applied} 个窗口）。右下角 🎨 按钮可随时一键切换或还原。`);
   warnPartialFailure("应用", failed, failures);
-  if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「更新.command」一键升级。`);
+  if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「双击换肤」会自动拉取更新。`);
   return theme;
 }
 
