@@ -1,6 +1,6 @@
 {
   "name": "coskin",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "private": true,
   "type": "module",
   "description": "CoSkin — Codex Desktop 换肤 MVP（本机回环 CDP 注入，零依赖）",
