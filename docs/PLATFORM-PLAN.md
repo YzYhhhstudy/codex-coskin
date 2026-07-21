@@ -10,11 +10,28 @@ DOM/token 选择器。因此扩展的本质是「新增一个 launcher + 一份�
 
 ## 一、Windows 版 Codex 实现方案（独立版已实现，待真机验证）
 
-> **进度（2026-07-19）**：平台分派 + 独立安装版 launcher 已落地——
+> **进度（2026-07-21，v0.29.0）**：平台分派 + 独立安装版 launcher 已落地——
 > `src/launcher.mjs`（按 `process.platform` 分派）、`src/launcher-win.mjs`
-> （AppX/注册表找应用、`CloseMainWindow()` 优雅关闭、`Start-Process` 带调试参数启动）、
-> `双击换肤.bat` 双击入口。同意门与"仅会话"铁律照搬。**尚未在真实 Windows 上验证**；
-> Store/MSIX 版检测到会给明确指引而非静默失败。下方是完整设计说明。
+> （AppX/注册表找应用、`CloseMainWindow()` 优雅关闭、`Start-Process` 带调试参数启动）。
+> 双击入口两个：`双击换肤.bat`（显示控制台）+ `双击换肤(无窗口).vbs`（隐藏窗口、可钉任务栏，
+> 跑 `resume --update --gui`）。`--gui` 的确认/报错走 PowerShell MessageBox；装技能已收进 node 侧
+> `ensureSkillInstalled()`（跨平台幂等）。同意门与"仅会话"铁律照搬。
+> **以下全部尚未在真实 Windows 上验证**；Store/MSIX 版检测到会给明确指引而非静默失败。
+
+### 真机验收清单（待办 · 需要一台真实 Windows）
+
+按重要性排序，逐项在真机上过：
+- [ ] **独立版找应用 + 带调试端口启动**：`launcher-win.mjs` 能定位 `.exe`、`Start-Process` 带
+      `--remote-debugging-port=9341` 起来后端口真的在监听（`curl http://127.0.0.1:9341/json/version`）。
+- [ ] **优雅关闭同意门**：Codex 运行中 → `--gui` 弹 PowerShell MessageBox 问"重启吗"，点"否"不动它；
+      点"是"才 `CloseMainWindow()`（**不是** `Stop-Process -Force`）等它退、再带参重启。
+- [ ] **`双击换肤(无窗口).vbs`**：双击**不弹黑窗口**、能启动带皮肤的 Codex；`where node` 找不到时能弹 MsgBox。
+- [ ] **中文编码**：`.vbs` 的 MsgBox 与 `--gui` PowerShell 弹窗里的中文**不乱码**（.vbs 存盘编码是最大嫌疑；
+      乱码就改用 UTF-16 LE + BOM，或退化成英文文案）。
+- [ ] **装技能路径**：`ensureSkillInstalled()` 写到 `%USERPROFILE%\.agents\skills\coskin\SKILL.md`，
+      反斜杠路径 + UTF-8 内容都对，`__COSKIN_ROOT__` 全替换。
+- [ ] **注入生效**：面板/壁纸/水玻璃/桌宠在 Windows 版 Codex 上渲染正常（DOM 选择器与 mac 一致性）。
+- [ ] **Store/MSIX 兜底**：装的是 Store 版时给出明确"改用独立版/带参快捷方式"的指引，不静默失败。
 
 
 ### 目标与差异
@@ -49,11 +66,13 @@ Windows 专属只需补：AUMID 解析、WM_CLOSE 优雅退出、带参启动三
 ## 二、跨工具（不止 Codex）实施方案
 
 ### 关键探明（2026-07，本机只读侦察）
-- **Claude Desktop = Electron**（`com.anthropic.claudefordesktop`，含 `app.asar` +
-  Electron Framework）→ **同一套 CDP 注入技术上可行**。它没有官方换肤接口，但这正是
-  CoSkin 的切入点。
-- **Cursor / Antigravity / Kiro = VS Code 分支**（都是 Electron）→ 同样可注入；且它们
-  自带 VS Code 主题系统，颜色层可借力，壁纸/背景层仍需注入。
+- **Claude Desktop = Electron 但已加固**（`com.anthropic.claudefordesktop`，含 `app.asar` +
+  Electron Framework）→ **CDP 注入走不通**。实测：`open --args --remote-debugging-port` 与直调二进制
+  都**打不开调试端口**、启动日志里**没有** "DevTools listening on ws://…"（Electron 开启远程调试时才会打印）。
+  说明 Anthropic 用 Electron fuse 关掉了 inspector。**所以现有机制对 Claude Desktop 无效**——除非改
+  `app.asar`（违背"不改二进制、可逆"承诺）或等官方主题 API。**这条路暂时封死。**
+- **Cursor / Antigravity / Kiro / Windsurf = VS Code 分支**（都是 Electron）→ 大概率可注入；且它们
+  自带 VS Code 主题系统，颜色层可借力，壁纸/背景/桌宠层仍靠注入。**这才是务实的跨工具方向**（未逐一实测端口）。
 
 ### 抽象重构：引入「目标描述符」
 把当前写死 Codex 的地方收敛成一个 target 定义：
@@ -71,14 +90,14 @@ Windows 专属只需补：AUMID 解析、WM_CLOSE 优雅退出、带参启动三
 token 编译器 / 取色 / 注入外壳 / 面板 UI 全部读这个描述符，不再认识"Codex"。
 
 ### 分阶段
-- **Phase 1（已完成）**：Codex Desktop / macOS。
-- **Phase 2：Claude Desktop**（战略价值最高）——"一套主题同时罩住 Codex + Claude"，
-  这是别人短期抄不走的定位。工作量：只读扒 Claude 的 token/DOM（同"中心点堆栈"手法）→
-  写它的 target 描述符 → 颜色层几乎白得；装饰层按它的界面重新设计（Claude 是对话流，
-  没有 Codex 的首页四卡，`cards` 装饰不适用，但 token+壁纸+桌宠都能用）。约 2~3 天。
-- **Phase 3：VS Code 系（Cursor/Kiro/Antigravity）**——颜色借 VS Code 主题机制、
-  背景/装饰靠注入；一份 target 描述符覆盖一类分支。
+- **Phase 1（已完成）**：Codex Desktop / macOS（+ Windows 代码就绪待真机）。
+- **Phase 2：VS Code 系（Cursor / Windsurf / Kiro / Antigravity）**——现在**最务实**的跨工具方向
+  （Claude Desktop 已探明封死，见上）。这些是 Electron，大概率可 CDP 注入；颜色层可借 VS Code 主题机制、
+  背景/水玻璃/桌宠靠注入。卖点收窄但独一无二：native 主题管不到的 AI 对话面板 + 氛围皮。
+  第一步：逐一只读侦察各自的调试端口是否打得开（同 Claude 那套决定性测试）→ 能开的写 target 描述符。
+- **Phase 3：Claude Desktop（阻塞中）**——技术上被加固挡住，等官方主题 API 或不改二进制的新注入向量再说。
 
-### 为什么这条比 Windows 更值得先做
+### 为什么跨工具比 Windows 更值得先做
 Windows 让 CoSkin 变成"第 N+1 个 Codex 换肤器"；跨工具让它变成**"唯一的跨 agent
 主题工作室"**——`.coskin` 分享格式 + token 编译器天生工具无关，护城河在这里。
+（注：Windows 已基本就绪、只差真机验收，所以短期两条都能推进。）
