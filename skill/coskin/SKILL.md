@@ -36,10 +36,11 @@ node __COSKIN_ROOT__/src/coskin.mjs status               # 只读状态
 
 Windows 上把路径分隔符换成 `\`（如 `node __COSKIN_ROOT__\src\coskin.mjs list`）。
 
-傻瓜入口（双击，每平台仅一个）：
-- macOS：`双击换肤.command` —— 唯一入口：装技能 + 拉最新 + 启动 Codex（带皮肤）并恢复上次主题。
-- Windows：`双击换肤.bat` —— 同上。
-- 换主题 / 自定义配色 / 导入导出都在 Codex 右下角 🎨 面板里（`resume --update` 是它双击运行的命令）。
+傻瓜入口（双击就打开带皮肤的 Codex：更新 + 恢复上次主题 + 自动装技能）：
+- macOS：`CoSkin.app`（清爽、可钉 Dock、无终端）或 `双击换肤.command`（显示进度）。
+- Windows：`双击换肤(无窗口).vbs`（清爽、可钉任务栏）或 `双击换肤.bat`（显示控制台）。
+- 底层都是 `node src/coskin.mjs resume --update`（清爽版加 `--gui`：确认/报错走系统弹窗）。
+- 换主题 / 自定义配色 / 导入导出都在 Codex 右下角 🎨 面板里。技能安装由 node 侧 `ensureSkillInstalled` 幂等完成。
 
 ## 按用户意图分派
 

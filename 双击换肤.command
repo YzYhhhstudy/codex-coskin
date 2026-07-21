@@ -19,19 +19,8 @@ if ! command -v node >/dev/null 2>&1; then
   echo "按回车关闭…"; read -r; exit 1
 fi
 
-# 安装 Codex 技能（先查是否已装且路径正确，是则跳过，避免重复写）
-DST="$HOME/.agents/skills/coskin"
-if [ -f "$DST/SKILL.md" ] && grep -qF "$DIR" "$DST/SKILL.md" 2>/dev/null; then
-  echo "✅ Codex 技能已安装（可直接对 Codex 说「用 coskin 换个主题」）"
-else
-  mkdir -p "$DST"
-  if sed "s|__COSKIN_ROOT__|$DIR|g" "$DIR/skill/coskin/SKILL.md" > "$DST/SKILL.md" 2>/dev/null; then
-    echo "✅ 已安装 Codex 技能（可直接对 Codex 说「用 coskin 换个主题」）"
-  fi
-fi
-echo ""
-
 # 启动 Codex（关着会自动以调试模式打开）+ 拉最新代码 + 重上你上次用过的主题
+# （装 Codex 技能已收进 node 侧 resume，幂等，不再在这里做）
 node "$DIR/src/coskin.mjs" resume --update
 echo ""
 echo "🎨 换主题 / 自定义配色 / 导入导出，点 Codex 右下角的 🎨 按钮就行。"

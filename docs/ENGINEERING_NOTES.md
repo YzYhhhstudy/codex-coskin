@@ -103,12 +103,16 @@
   （gitignore），公开仓库的同名内置主题用**纯渐变 + 全套 decor**；真图版走 `.coskin` 点对点分享（个人使用）。
 - **`.coskin` 是 JSON 文件**（`format:"coskin-theme"`）：配色+decor+壁纸 base64 内嵌；导入 id 自动去重。
 
-## 入口与更新模型（v0.27.1 合并为单文件）
+## 入口与更新模型（v0.29.0：清爽版 + 排错版，装技能收进 node）
 
-**每平台只有 1 个双击文件**，把用户接触面压到最小（v0.27.1 从 2 个合一）：
-- `双击换肤`（.command/.bat）：① 查技能是否已装（`grep -qF $DIR`，已装且路径对则跳过，路径变则自愈重装）
-  → ② `resume --update` = `git pull --ff-only`（失败不致命，跳过继续）+ 重上「上次用过的主题」
-  （记在 gitignore 的 `.coskin-state.json`）。Codex 关着时直接调试模式启动上肤，零提示；开着时只问一句「重启吗？」。
+**核心动作统一为 `resume --update`**（`git pull --ff-only` 失败不致命 + 重上「上次用过的主题」，记在 gitignore 的
+`.coskin-state.json`）；Codex 关着时直接调试模式启动上肤、零提示，开着时只问一句「重启吗？」。
+每平台两个入口，做的完全一样，只差有没有终端窗口：
+- **清爽版**（推荐，可钉 Dock/任务栏、无窗口、`--gui`）：mac `CoSkin.app`、win `双击换肤(无窗口).vbs`。
+- **排错版**（显示进度，方便排错）：mac `双击换肤.command`、win `双击换肤.bat`。
+- **装技能收进 node**（v0.29.0）：`ensureSkillInstalled()` 跨平台、幂等（dst 含当前 ROOT 就跳过）、
+  **先把模板读进内存再写 dst**（读不到就抛、绝不截空已装好的文件——正是修 shell `sed>file` 那个坑）。
+  在 `resume()`/`menu()` 开头调用，四种入口共用一份，`.vbs` 因此不必自己实现装技能。
 - **不再开终端菜单**：换主题 / 自定义配色 / 导入导出 / 还原，全在 Codex 右下角 🎨 面板里（面板已能做全部）。
   `node coskin.mjs menu` 仍保留给 CLI 老流程，但入口文件不再调它。
 - 合并动机：面板功能追平后，「双击换肤(菜单)」和「一键换肤(resume)」的差别消失——一个文件即 启动+更新+使用。
@@ -118,8 +122,9 @@
 - **`.app` 清爽启动器（v0.28.0）**：`CoSkin.app`（放仓库内，靠自身位置 `../../..` 找仓库根）= 无终端窗口地
   `resume --update --gui`，可钉 Dock。`LSUIElement=true` 让它跑完不留 Dock/切换器残影。node 发现要手动补
   nvm/homebrew/volta（GUI App 的 PATH 很干净），找不到 node 直接 osascript 弹窗。ZIP 下载会丢 +x 位、须 `chmod +x`。
-- **Windows 没有 `.app`**：等价是 `.bat` 的快捷方式（运行方式=最小化 + 钉任务栏）。`--gui` 的 PowerShell MsgBox 已备好，
-  真正的无窗口 `.vbs` 启动器留待真机验证（Windows 端整体尚未在真机充分验证）。
+- **Windows 没有 `.app`**：等价物是 `双击换肤(无窗口).vbs`（`WScript.Shell.Run(..., 0, True)` 隐藏窗口跑
+  `resume --update --gui`；先 `where node` 查不到就 MsgBox）。确认/报错走 `--gui` 的 PowerShell MsgBox。
+  `.vbs` 的中文 MsgBox 有编码风险、且 Windows 端整体尚未在真机充分验证——已在文件头与 README 标注。
 
 ## localStorage 键一览（页面侧持久化）
 

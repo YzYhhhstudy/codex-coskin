@@ -276,9 +276,27 @@ async function gitPull() {
   catch (error) { return { ok: false, msg: (error.stderr || error.message).toString().trim() }; }
 }
 
+// 幂等装/更新 Codex 技能到 ~/.agents/skills/coskin。跨平台（Node fs），所有入口共用一份，
+// 无需每个 .command/.bat/.vbs 各自实现。先把模板读进内存再写目标——读不到就抛、绝不截空已装好的文件。
+async function ensureSkillInstalled() {
+  try {
+    const dstDir = join(homedir(), ".agents", "skills", "coskin");
+    const dst = join(dstDir, "SKILL.md");
+    try {
+      const cur = await readFile(dst, "utf8");
+      if (cur.includes(ROOT)) return; // 已装且指向当前仓库 → 跳过
+    } catch {}
+    const tpl = await readFile(join(ROOT, "skill", "coskin", "SKILL.md"), "utf8"); // 读不到→抛，不碰 dst
+    await mkdir(dstDir, { recursive: true });
+    await writeFile(dst, tpl.split("__COSKIN_ROOT__").join(ROOT));
+    log("✅ 已安装/更新 Codex 技能（对 Codex 说「用 coskin 换个主题」即可）");
+  } catch { /* 装技能失败不致命，不打断换肤 */ }
+}
+
 // 一键恢复：可选先拉最新代码，再重新应用上次用过的主题（关机/关 Codex 后最快的上肤方式）。
 // Codex 已关闭时会直接以调试模式启动并上肤（无运行实例→不打断，无需确认）。
 async function resume(port, confirmRestart, doUpdate = false) {
+  await ensureSkillInstalled();
   if (doUpdate) {
     log("检查更新…");
     const r = await gitPull();
@@ -544,6 +562,7 @@ function cleanDraggedPath(input) {
 }
 
 async function menu(port) {
+  await ensureSkillInstalled();
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     while (true) {

@@ -22,17 +22,6 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-# 装 / 自愈更新 Codex 技能（幂等：已装且路径对则跳过）
-DST="$HOME/.agents/skills/coskin"
-if ! { [ -f "$DST/SKILL.md" ] && grep -qF "$DIR" "$DST/SKILL.md" 2>/dev/null; }; then
-  mkdir -p "$DST"
-  # 先写临时文件再原子替换：sed 失败时不会把已装好的技能截空
-  if sed "s|__COSKIN_ROOT__|$DIR|g" "$DIR/skill/coskin/SKILL.md" > "$DST/SKILL.md.tmp" 2>/dev/null; then
-    mv "$DST/SKILL.md.tmp" "$DST/SKILL.md"
-  else
-    rm -f "$DST/SKILL.md.tmp"
-  fi
-fi
-
 # 打开带皮肤的 Codex：更新 + 恢复上次主题；确认 / 报错 / 完成提示都走系统弹窗
+# （装 Codex 技能已收进 node 侧 resume，幂等且原子写入，不再在这里做）
 exec node "$DIR/src/coskin.mjs" resume --update --gui
