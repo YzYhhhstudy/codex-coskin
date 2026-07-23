@@ -653,15 +653,20 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       if (el === title) el.style.fontWeight = "800";
     }
   };
-  // 找首页标题：整体文本匹配的「最深容器」（允许有子元素——真机把项目名拆成独立 span）
+  // 找首页标题：**结构优先，文案兜底**。
+  // 血泪：早期只按文案 /work on/ 匹配，Codex 把标题从 "What should we work on?" 改成
+  // "What should we build in <项目>?" 后就再也找不到——标题不接管、板子几何也跟着失控。
+  // 结构类名（heading-xl / group/title）比文案稳得多，改文案不会失效。
   const findTitle = (main) => {
     if (state.titleEl && state.titleEl.isConnected) return state.titleEl;
     state.titleEl = null;
-    let best = null;
-    for (const el of main.querySelectorAll("h1,h2,h3,p,div,span")) {
-      const t = el.textContent;
-      if (t.length < 120 && /work on|构建什么/i.test(t)) {
-        if (!best || t.length <= best.textContent.length) best = el;
+    let best = main.querySelector('[class*="heading-xl"]') || main.querySelector('[class*="group/title"]');
+    if (!best) {
+      for (const el of main.querySelectorAll("h1,h2,h3,p,div,span")) {
+        const t = el.textContent;
+        if (t.length < 120 && /work on|build in|构建什么|做点什么/i.test(t)) {
+          if (!best || t.length <= best.textContent.length) best = el;
+        }
       }
     }
     state.titleEl = best;
@@ -706,11 +711,10 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     }
     sug.dataset.csCards = "1";
     sug.style.removeProperty("--cs-cards-w"); // 横幅档由锚容器变量供宽
-    let anchor = sug.parentElement;
-    if (title) {
-      let cur = title;
-      for (let i = 0; cur && i < 8; i++) { if (cur.contains(sug)) { anchor = cur; break; } cur = cur.parentElement; }
-    }
+    // 锚点固定用卡片父级。新版 Codex 把标题与卡片拆到了不同子树，再往上找「共同祖先」会圈到
+    // 很大的容器（连输入框一起），给它加 position/isolation 风险太大。板子按视口坐标定位，
+    // 锚点小反而更安全。
+    const anchor = sug.parentElement;
     if (!anchor) return;
     let plate = anchor.querySelector(":scope > .cs-hero-plate");
     if (!plate) {
@@ -727,33 +731,30 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       anchor.insertBefore(plate, anchor.firstChild);
       if (state.activeColors) stylePlate(plate, active, state.activeColors);
     }
-    // 横幅几何：基准是「工作界面」（悬浮顶栏以下）——main 从 y=0 起、顶栏只是悬浮层，
-    // 直接用 main.top 会把板顶塞进标题栏（圆角被吃掉）。高=max(工作区1/3, 包住卡片)。
+    // 横幅几何：**贴着内容走**（标题顶 → 卡片底），不再把板顶钉死在工作区顶部。
+    // 旧写法 top=工作区顶+14、bottom=max(工作区1/3, 卡片底) 有个隐患：一旦标题与卡片被拉开
+    // （新版 Codex 就是这样，标题 y≈453、卡片底 y≈681），板子就被迫从顶部一路拉到卡片底部，
+    // 实测涨到窗高 64%——霸屏。改成包住内容后自然回到 ~1/3。
     const headerEl = D.querySelector("header.app-header-tint");
     const topBase = headerEl ? headerEl.getBoundingClientRect().bottom : r.top;
     const contentH = innerHeight - topBase;
-    const plateTopV = topBase + 14;
     const cardH = Math.round(innerHeight / 8);
     const W = Math.max(320, Math.round(r.width - 88));
     if (anchor.dataset.csCardVars === undefined) anchor.dataset.csCardVars = "1";
     anchor.style.setProperty("--cs-card-h", cardH + "px");
     anchor.style.setProperty("--cs-cards-w", Math.min(W - 56, 1400) + "px");
-    // 整列上移：图标/标题落在板内上部（transform 可还原）
-    if (title && anchor.contains(title)) {
-      const target = plateTopV + 34;
-      const nowRect = anchor.getBoundingClientRect();
-      const currentTf = anchor.dataset.csTfDelta ? parseFloat(anchor.dataset.csTfDelta) : 0;
-      const naturalTop = nowRect.top + currentTf;
-      const delta = Math.max(0, Math.round(naturalTop - target));
-      if (Math.abs(delta - currentTf) > 4) {
-        if (anchor.dataset.csPrevTf === undefined) anchor.dataset.csPrevTf = anchor.style.transform || "";
-        anchor.dataset.csTfDelta = String(delta);
-        anchor.style.transform = delta > 0 ? "translateY(-" + delta + "px)" : (anchor.dataset.csPrevTf || "");
-      }
-    }
     const aR = anchor.getBoundingClientRect();
     const sR = sug.getBoundingClientRect();
-    const plateBottomV = Math.max(plateTopV + Math.round(contentH / 3), sR.bottom + 18);
+    const tR = title ? title.getBoundingClientRect() : null;
+    const contentTopV = tR && tR.height ? tR.top : sR.top;
+    let plateTopV = Math.max(topBase + 14, Math.round(contentTopV - 40));
+    const plateBottomV = Math.round(sR.bottom + 20);
+    // 夹进合理区间：太扁不好看，太高会霸屏
+    const h0 = plateBottomV - plateTopV;
+    const minH = Math.round(contentH * 0.22);
+    const maxH = Math.round(contentH * 0.55);
+    if (h0 < minH) plateTopV = Math.max(topBase + 14, plateBottomV - minH);
+    else if (h0 > maxH) plateTopV = plateBottomV - maxH;
     plate.style.left = Math.round((aR.width - W) / 2) + "px";
     plate.style.width = W + "px";
     plate.style.right = "auto";
