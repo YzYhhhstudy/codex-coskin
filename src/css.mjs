@@ -673,6 +673,18 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     state.titleEl = best;
     return state.titleEl;
   };
+  // 首页内容整体上移的比例（占窗高）。0.075 ≈ 999px 窗口上移 75px，
+  // 配合"板顶包住图标"后，板子上沿大约落在壁纸「是」字那一带。想再高就调大。
+  const LIFT_RATIO = 0.075;
+  // 撤销上移：离开首页 / 非 Codex 模式 / 原图档都要把官方元素的 transform 还回去
+  const clearLift = () => {
+    for (const el of D.querySelectorAll("[data-cs-lifted]")) {
+      el.style.transform = el.dataset.csPrevTf || "";
+      delete el.dataset.csLifted;
+      delete el.dataset.csPrevTf;
+      if (!el.getAttribute("style")) el.removeAttribute("style");
+    }
+  };
   // ChatGPT.app 同时承载 **Codex** 与 **ChatGPT（Chat/Work）** 两种模式，而且两边复用同一个
   // home-suggestions 类名——不拦的话，切到 ChatGPT/Work 也会挂上标题板和酒色财气行书字，完全串味。
   // 判据①产品名标签（Codex / ChatGPT）；②兜底：成对出现的 Chat/Work 切换器 = ChatGPT 模式。
@@ -699,6 +711,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const active = window.__coskinActive ? THEMES.find((x) => x.id === window.__coskinActive) : null;
     if (!active || !sug || !main) {
       delete D.documentElement.dataset.csCodex;
+      clearLift();
       if (brand) brand.style.display = "none";
       for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
       for (const s of D.querySelectorAll("[data-cs-cards]")) { delete s.dataset.csCards; s.style.removeProperty("--cs-cards-w"); }
@@ -717,6 +730,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     // 否则 ChatGPT 的「文字行」会被我们画成大方块卡片（真机踩过）。
     if (!inCodexMode()) {
       delete D.documentElement.dataset.csCodex;
+      clearLift();
       for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
       for (const s of D.querySelectorAll("[data-cs-cards]")) { delete s.dataset.csCards; s.style.removeProperty("--cs-cards-w"); }
       clearGlyphs();
@@ -730,6 +744,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     styleTitle(title);
     // 原图档：零遮挡——不挂板子、不动整列布局；卡片行给紧凑统一宽（戒条两行不折行）
     if (state.vis === "raw") {
+      clearLift();
       for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
       const decor = (active && active.decor) || {};
       if (Array.isArray(decor.cards) && decor.cards.length) {
@@ -775,11 +790,34 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     if (anchor.dataset.csCardVars === undefined) anchor.dataset.csCardVars = "1";
     anchor.style.setProperty("--cs-card-h", cardH + "px");
     anchor.style.setProperty("--cs-cards-w", Math.min(W - 56, 1400) + "px");
+    // 内容整体上移（让原画舒展开）：标题块与卡片块**分别**挪——新版把它们放在不同子树，
+    // 共同祖先连输入框一起装着，整体挪会把输入框也拽上去。逐笔记账，还原时精确恢复。
+    const titleBox = title ? title.parentElement : null;
+    const lift = Math.max(0, Math.min(220, Math.round(innerHeight * LIFT_RATIO)));
+    for (const el of [titleBox, anchor]) {
+      if (!el) continue;
+      if (el.dataset.csPrevTf === undefined) el.dataset.csPrevTf = el.style.transform || "";
+      el.dataset.csLifted = "1";
+      el.style.transform = lift > 0 ? "translateY(-" + lift + "px)" : (el.dataset.csPrevTf || "");
+    }
     const aR = anchor.getBoundingClientRect();
     const sR = sug.getBoundingClientRect();
     const tR = title ? title.getBoundingClientRect() : null;
-    const contentTopV = tR && tR.height ? tR.top : sR.top;
-    let plateTopV = Math.max(topBase + 14, Math.round(contentTopV - 40));
+    // 板顶要把**标题上方的官方图标**一起包住（之前只按标题算，图标上半截露在板外）
+    let iconTopV = null;
+    if (titleBox && tR) {
+      for (const e of titleBox.querySelectorAll("svg,img")) {
+        const ir = e.getBoundingClientRect();
+        if (ir.height > 10 && ir.height < 160 && ir.bottom <= tR.top + 8) {
+          if (iconTopV === null || ir.top < iconTopV) iconTopV = ir.top;
+        }
+      }
+    }
+    const contentTopV = Math.min(
+      tR && tR.height ? tR.top : sR.top,
+      iconTopV === null ? Infinity : iconTopV,
+    );
+    let plateTopV = Math.max(topBase + 14, Math.round(contentTopV - 34));
     const plateBottomV = Math.round(sR.bottom + 20);
     // 夹进合理区间：太扁不好看，太高会霸屏
     const h0 = plateBottomV - plateTopV;
@@ -1485,6 +1523,11 @@ export const RESTORE_SCRIPT = `(() => {
     "__coskinClearPetImage", "__coskinPlacePet", "__coskinPetTick", "__coskinPetScale", "__coskinPanelScale",
     "__coskinState"]) delete window[k];
   delete document.documentElement.dataset.csCodex; // 卡片样式作用域开关
+  for (const el of document.querySelectorAll("[data-cs-lifted]")) {   // 撤销首页内容上移
+    el.style.transform = el.dataset.csPrevTf || "";
+    delete el.dataset.csLifted; delete el.dataset.csPrevTf;
+    if (!el.getAttribute("style")) el.removeAttribute("style");
+  }
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;
