@@ -23,8 +23,10 @@ $NodeExe = Join-Path $NodeDir 'node.exe'
 
 function Show-Msg([string]$text) {
   if ($Gui) {
-    Add-Type -AssemblyName PresentationFramework
-    [System.Windows.MessageBox]::Show($text, 'CoSkin') | Out-Null
+    # TopMost 宿主窗体当 owner，否则无窗口启动时弹框会被别的窗口盖住
+    Add-Type -AssemblyName System.Windows.Forms
+    $owner = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}
+    [System.Windows.Forms.MessageBox]::Show($owner, $text, 'CoSkin') | Out-Null
   } else {
     Write-Host $text
   }

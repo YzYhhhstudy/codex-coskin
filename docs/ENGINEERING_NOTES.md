@@ -40,6 +40,28 @@
 - **模拟页验证 ≠ 真机**：mock 锁回归（60+ 断言、还原逐项回基线），但真机 DOM 总有惊喜。
   每次真机反馈 → 先只读侦察 → 再把新结构+新断言补进 mock。
 
+## 跨平台：哪些改动天然通用，哪些必须两边各写一份
+
+**分界线就一条：代码跑在哪个进程里。**
+
+- **注入层（`src/css.mjs`）= 平台无关。** 它跑在 Codex 自己的 Chromium 渲染器里，Windows 上是同一个引擎、同一套 DOM。
+  所以标题板几何 / 标题提层 / 质感四档 / Codex-ChatGPT 模式判别 / 卡片样式作用域 / `findTitle` —— **写一次两个平台都生效，不需要任何适配**。
+- **宿主层（`src/coskin.mjs` + 启动器）= 平台相关。** 找应用、带调试端口重启、`--gui` 弹窗、Node 自举，这些必须各写一份。
+
+**但注入层也有三类"伪平台无关"的坑（v0.34.1 全部修掉）：**
+1. **字体**：行书字 `.cs-glyph` 原栈 `"Xingkai SC","Kaiti SC","STKaiti"` **三个全是 macOS 字体**，
+   Windows 上会一路掉到 `serif`（宋体）——完全不是行书。补 Windows 自带的 `KaiTi/楷体/SimKai` 才有等效观感。
+   同理 `ui-rounded` 也是 macOS 专属，靠 `system-ui` 兜底（Windows 落到 Segoe UI，可接受）。
+2. **窗口控件位置**：品牌行左缘原本写死 `226` 去避让 macOS 红绿灯。**Windows 的窗口按钮在右侧**，写死就白白缩进一大截。
+   改成**实测顶栏 DOM 控件的最右边缘**再让开——macOS 上 Codex 已为红绿灯预留了空间（DOM 按钮本身就从 ~88 起），
+   所以量 DOM 在两个平台都得到正确答案。**凡是"避让系统 UI"的偏移，一律实测而不是写死。**
+3. **弹窗置顶**：mac 的 `LSUIElement` 应用弹的对话框不会到最前（要借 System Events）；
+   **Windows 的 PowerShell MessageBox 同样会被别的窗口盖住**——要用一个 `TopMost` 宿主窗体当 owner。
+   两边是同一个病，别只修一边。
+
+**Windows 仍待真机验证**：`launch.ps1` 的 Node 自举、`.vbs` 无窗口启动、中文编码、注入后的实际渲染。清单见 PLATFORM-PLAN。
+**OneDrive = Windows 版的 iCloud 坑**：同样会把文件抽成按需下载的占位符，无窗口启动器读不到就静默失败——启动器的文件存在性校验两个平台都需要。
+
 ## 真机诊断三板斧（全只读，不打扰使用者）
 
 1. `document.elementsFromPoint(x, y)` 取某点的元素堆栈——找遮挡层（壁纸被谁挡住）、找结构。

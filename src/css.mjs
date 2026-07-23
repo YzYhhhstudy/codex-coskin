@@ -256,7 +256,7 @@ const PANEL_CSS = `
   mask-image: linear-gradient(90deg, transparent 0, #000 32%);
   opacity: .92;
 }
-.cs-glyph { display: block; font-family: "Xingkai SC", "Kaiti SC", "STKaiti", serif; font-size: 42px; line-height: 1.15; font-weight: 700; text-align: center; }
+.cs-glyph { display: block; font-family: "Xingkai SC", "STXingkai", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", serif; font-size: 42px; line-height: 1.15; font-weight: 700; text-align: center; }
 .cs-glyph.cs-glyph-sm { font-size: 26px; }
 @keyframes coskin-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes coskin-bob-fast { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
@@ -696,9 +696,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   // 板顶固定留在「工作区上界 + 50px」（用户指定）；内容随之整体上移到板内。
   const PLATE_TOP_GAP = 50;
   const CONTENT_PAD = 34;   // 内容（图标/标题）顶部距板顶的留白
-  // 品牌行左缘至少要避开左上角控件簇（Hide sidebar / Back / Forward，实测最右 230）——
-  // 侧边栏收起时主区贴到最左，不避让就会压在按钮上，功能点不动。
-  const BRAND_MIN_LEFT = 226;
+
   // 撤销上移：离开首页 / 非 Codex 模式 / 原图档都要把官方元素的 transform 还回去
   const clearLift = () => {
     for (const el of D.querySelectorAll("[data-cs-lifted]")) {
@@ -748,7 +746,17 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const r = main.getBoundingClientRect();
     if (brand) {
       brand.style.display = "flex";
-      const bl = Math.max(r.left, BRAND_MIN_LEFT);
+      // 实测顶栏控件最右边缘再让开，别写死偏移：
+      // macOS 红绿灯是原生窗口按钮（不在 DOM 里），但 Codex 已为它预留了空间，
+      // 所以 DOM 按钮本身就从 ~88 起、右缘 ~230；Windows 窗口按钮在右侧，左边按钮更靠左。
+      // 量 DOM 就能同时适配两个平台。只在顶栏里查，避免每拍遍历整页按钮。
+      let ctrlRight = 0;
+      const hdrEl = D.querySelector("header.app-header-tint");
+      for (const el of (hdrEl || D).querySelectorAll("button,a,[role=button]")) {
+        const cr = el.getBoundingClientRect();
+        if (cr.height > 8 && cr.width > 0 && cr.top < 52 && cr.left < 640 && cr.right > ctrlRight) ctrlRight = cr.right;
+      }
+      const bl = Math.max(r.left, Math.round(ctrlRight) + 16);
       brand.style.left = bl + "px";
       brand.style.width = Math.max(120, Math.round(r.right - bl)) + "px";
     }

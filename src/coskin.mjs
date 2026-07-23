@@ -206,8 +206,10 @@ async function guiConfirm(question) {
       return /重启/.test(stdout);
     }
     if (process.platform === "win32") {
+      // 和 mac 用 System Events 同理：无窗口启动器弹的框会被别的窗口盖住，
+      // 用一个 TopMost 的宿主窗体当 owner 顶到最前，否则用户看不见 → 像"点了没反应"。
       const { stdout } = await run("powershell", ["-NoProfile", "-Command",
-        `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${JSON.stringify(question)}, 'CoSkin', 'YesNo', 'Question')`]);
+        `Add-Type -AssemblyName System.Windows.Forms; $o=New-Object System.Windows.Forms.Form -Property @{TopMost=$true}; [System.Windows.Forms.MessageBox]::Show($o, ${JSON.stringify(question)}, 'CoSkin', 'YesNo', 'Question')`]);
       return /Yes/i.test(stdout);
     }
   } catch { /* 用户点了取消 = 非零退出，按「不重启」处理 */ }
@@ -219,7 +221,7 @@ async function guiAlert(message) {
       await run("osascript", ["-e", `tell application "System Events" to display dialog ${JSON.stringify(message)} with title "CoSkin" buttons {"好"} default button "好"`]);
     } else if (process.platform === "win32") {
       await run("powershell", ["-NoProfile", "-Command",
-        `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${JSON.stringify(message)}, 'CoSkin')`]);
+        `Add-Type -AssemblyName System.Windows.Forms; $o=New-Object System.Windows.Forms.Form -Property @{TopMost=$true}; [System.Windows.Forms.MessageBox]::Show($o, ${JSON.stringify(message)}, 'CoSkin')`]);
     }
   } catch {}
 }
