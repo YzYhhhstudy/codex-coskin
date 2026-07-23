@@ -6,11 +6,17 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # 准备运行环境：有 node 就用；没有就免密下载绿色版到 ~/.coskin（不需要密码，全新电脑也能直接跑）
-NODE="$(sh "$DIR/scripts/ensure-node.sh")" || {
+if [ ! -f "$DIR/scripts/ensure-node.sh" ]; then
+  echo "❌ 找不到 $DIR/scripts/ensure-node.sh"
+  echo "   如果这个文件夹放在 iCloud 云盘里，可能还没同步完；等它下载完再双击我。"
+  echo "按回车关闭…"; read -r; exit 1
+fi
+NODE="$(sh "$DIR/scripts/ensure-node.sh")"
+if [ -z "$NODE" ] || [ ! -x "$NODE" ]; then
   echo ""
   echo "❌ 运行环境准备失败（原因见上）。联网后再双击我试试。"
   echo "按回车关闭…"; read -r; exit 1
-}
+fi
 
 # 启动 Codex（关着会自动以调试模式打开）+ 拉最新代码 + 重上你上次用过的主题
 # （装 Codex 技能已收进 node 侧 resume，幂等，不再在这里做）

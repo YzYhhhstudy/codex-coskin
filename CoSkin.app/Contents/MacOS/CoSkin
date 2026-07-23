@@ -9,10 +9,24 @@ DIR="$(cd "$SELF/../../.." && pwd)"             # 仓库根（codex-coskin/）
 # 准备运行环境：有 node 就用；没有就免密下载绿色版到 ~/.coskin（首次约 50MB）。
 # GUI 启动的 App 环境 PATH 很干净，nvm/homebrew/volta 的查找都在 ensure-node.sh 里做了；
 # 下载期间它会发系统通知，免得无窗口启动看起来像卡死。
-NODE="$(sh "$DIR/scripts/ensure-node.sh")" || {
-  osascript -e 'display dialog "准备运行环境失败。请检查网络后重新打开 CoSkin。" with title "CoSkin" buttons {"好"} default button "好"' >/dev/null 2>&1
+say_err() {
+  # 无窗口启动器唯一的报错出口：一定要把真实原因带出来，否则用户和作者都在猜
+  msg="$(printf '%s' "$1" | tr -d '\\"' | tr '\n' ' ' | cut -c1-700)"
+  osascript -e "display dialog \"$msg\" with title \"CoSkin\" buttons {\"好\"} default button \"好\"" >/dev/null 2>&1
   exit 1
 }
+for need in "scripts/ensure-node.sh" "src/coskin.mjs"; do
+  # iCloud/网盘同步没落地时最典型的症状：文件夹在、里面的文件还没下来（无窗口下会静默失败）
+  [ -f "$DIR/$need" ] || say_err "找不到 $DIR/$need。如果这个文件夹放在 iCloud 云盘里，可能还没同步完——等它下载完（或右键「立即下载」）再打开我。"
+done
+ERRLOG="$(mktemp -t coskin-env 2>/dev/null || echo /tmp/coskin-env.log)"
+NODE="$(sh "$DIR/scripts/ensure-node.sh" 2>"$ERRLOG")"
+if [ -z "$NODE" ] || [ ! -x "$NODE" ]; then
+  REASON="$(tail -c 700 "$ERRLOG" 2>/dev/null)"
+  rm -f "$ERRLOG"
+  say_err "准备运行环境失败：$REASON"
+fi
+rm -f "$ERRLOG"
 
 # 打开带皮肤的 Codex：更新 + 恢复上次主题；确认 / 报错 / 完成提示都走系统弹窗
 # （装 Codex 技能已收进 node 侧 resume，幂等且原子写入，不再在这里做）
