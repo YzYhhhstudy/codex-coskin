@@ -363,6 +363,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       editTitle: "🎨 自定义配色（实时）", cAccent: "强调", cSecondary: "辅色", cSurface: "底色", cInk: "墨色",
       saveTheme: "＋ 存为我的主题", myPalette: "我的配色", savedOk: "✓ 已存进列表",
       randomize: "🎲 随机", resetPal: "↺ 复位",
+      plateFx: "板子", pfFlat: "平面", pfRaise: "立体", pfFrost: "磨砂", pfBoth: "全套",
       processing: "处理中…", readFail: "读取失败，再试一次",
       tooBig: "已应用（图太大没存进快捷槽）", imgFail: "失败了，换张图试试",
       importing: "导入中…", importOk: "✓ 已导入并应用", importFail: "导入失败：", badFile: "文件不对",
@@ -383,6 +384,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       editTitle: "🎨 Custom colors (live)", cAccent: "Accent", cSecondary: "2nd", cSurface: "Surface", cInk: "Ink",
       saveTheme: "＋ Save as my theme", myPalette: "My palette", savedOk: "✓ Saved to list",
       randomize: "🎲 Random", resetPal: "↺ Reset",
+      plateFx: "Plate", pfFlat: "Flat", pfRaise: "Raised", pfFrost: "Frosted", pfBoth: "Both",
       processing: "Processing…", readFail: "Read failed, try again",
       tooBig: "Applied (image too big to save)", imgFail: "Failed, try another image",
       importing: "Importing…", importOk: "✓ Imported & applied", importFail: "Import failed: ", badFile: "bad file",
@@ -416,6 +418,11 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   // 还原后即便旧闭包被 setTheme 触发也会被这道门挡下，杜绝「已还原却被复活」的竞态。
   window.__coskinGen = (window.__coskinGen || 0) + 1;
   const __GEN = window.__coskinGen;
+  // 板子质感：flat 平面(原样) / raise 立体(景深线索,无模糊) / frost 磨砂(毛玻璃) / both 全套
+  let plateFx = "raise";
+  try { plateFx = localStorage.getItem("coskin.plateFx.v1") || "raise"; } catch {}
+  if (["flat", "raise", "frost", "both"].indexOf(plateFx) < 0) plateFx = "raise";
+  state.plateFx = plateFx;
   let petOn = "on";
   try { petOn = localStorage.getItem("coskin.pet.v1") || "on"; } catch {}
   state.petOn = petOn !== "off";
@@ -479,7 +486,19 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
   // 水玻璃板：透明不模糊，壁纸透板可见，只加一层极轻的主题色染；
   // 图片主题在板右侧放一条人物裁切（左缘羽化），decor.focus 调裁切位置
   const stylePlate = (plate, t, colors) => {
-    plate.style.backgroundImage = "none";
+    const fx = state.plateFx || "raise";
+    const raise = fx === "raise" || fx === "both";
+    const frost = fx === "frost" || fx === "both";
+    // 立体：顶边内高光（玻璃唇光）+ 板身纵向微渐变 + 更柔更大的投影，不依赖模糊
+    plate.style.backgroundImage = raise
+      ? "linear-gradient(180deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.06) 45%, rgba(255,255,255,0) 100%)"
+      : "none";
+    plate.style.boxShadow = raise
+      ? "inset 0 1.5px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(0,0,0,.07), 0 28px 70px rgba(0,0,0,.30)"
+      : "0 18px 48px rgba(0,0,0,.18)";
+    // 磨砂：和侧栏/对话框一致的毛玻璃；标题已被提到板子之上，不会被这层模糊吃掉
+    plate.style.backdropFilter = frost ? "blur(12px) saturate(1.06)" : "";
+    plate.style.webkitBackdropFilter = frost ? "blur(12px) saturate(1.06)" : "";
     plate.style.backgroundColor = colors.surface + "30";
     plate.style.setProperty(
       "--cs-hero-wash",
@@ -636,6 +655,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       el.style.fontWeight = el.dataset.csPrevWeight || "";
       if (!el.getAttribute("style")) el.removeAttribute("style");
       delete el.dataset.csTitled; delete el.dataset.csPrevColor; delete el.dataset.csPrevShadow; delete el.dataset.csPrevWeight;
+
     }
   };
   const styleTitle = (title) => {
@@ -686,6 +706,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       delete el.dataset.csLifted;
       delete el.dataset.csPrevTf;
       delete el.dataset.csLiftPx;
+      if (el.dataset.csPrevZ !== undefined) { el.style.zIndex = el.dataset.csPrevZ || ""; delete el.dataset.csPrevZ; }
+      if (el.dataset.csPrevPosZ !== undefined) { el.style.position = el.dataset.csPrevPosZ || ""; delete el.dataset.csPrevPosZ; }
       if (!el.getAttribute("style")) el.removeAttribute("style");
     }
   };
@@ -820,6 +842,17 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
         el.style.transform = wantLift > 0 ? "translateY(-" + wantLift + "px)" : (el.dataset.csPrevTf || "");
       }
       anchor.dataset.csLiftPx = String(wantLift);
+    }
+    // 标题块必须画在板子之上，否则磨砂档的 backdrop-filter 会把标题当背景一起糊掉。
+    // 关键：z-index 要加在 **被 transform 的 titleBox** 上——transform 本身就另起了层叠上下文，
+    // 加在里面的标题元素上只在它自己的上下文里有效，整块仍排在板子前面（真机踩过这个坑）。
+    if (titleBox && titleBox.dataset.csPrevZ === undefined) {
+      titleBox.dataset.csPrevZ = titleBox.style.zIndex || "";
+      titleBox.dataset.csPrevPosZ = titleBox.style.position || "";
+    }
+    if (titleBox) {
+      if (getComputedStyle(titleBox).position === "static") titleBox.style.position = "relative";
+      titleBox.style.zIndex = "2";
     }
     const aR = anchor.getBoundingClientRect();
     const sR = sug.getBoundingClientRect();
@@ -1103,7 +1136,19 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     updateDecorVisibility();
     for (const b of D.querySelectorAll("[data-coskin-pet]")) b.classList.toggle("coskin-on", b.getAttribute("data-coskin-pet") === v);
   });
-  for (const b of D.querySelectorAll("[data-coskin-pet]")) b.classList.toggle("coskin-on", b.getAttribute("data-coskin-pet") === (state.petOn ? "on" : "off"));
+  // 注意：此刻 panel 还没 append 进 document，必须在 panel 子树里查，否则初始高亮是空操作
+  for (const b of panel.querySelectorAll("[data-coskin-pet]")) b.classList.toggle("coskin-on", b.getAttribute("data-coskin-pet") === (state.petOn ? "on" : "off"));
+  // 板子质感：平面 / 立体 / 磨砂 / 全套（磨砂靠 backdrop-filter，标题已抬到板上层不会被糊）
+  mkCtl(tr("plateFx"), [["flat", tr("pfFlat")], ["raise", tr("pfRaise")], ["frost", tr("pfFrost")], ["both", tr("pfBoth")]], "data-coskin-plate", (v) => {
+    state.plateFx = v;
+    try { localStorage.setItem("coskin.plateFx.v1", v); } catch {}
+    const th = THEMES.find((x) => x.id === window.__coskinActive);
+    if (th && state.activeColors) {
+      for (const p of D.querySelectorAll(".cs-hero-plate")) stylePlate(p, th, state.activeColors);
+    }
+    for (const b of D.querySelectorAll("[data-coskin-plate]")) b.classList.toggle("coskin-on", b.getAttribute("data-coskin-plate") === v);
+  });
+  for (const b of panel.querySelectorAll("[data-coskin-plate]")) b.classList.toggle("coskin-on", b.getAttribute("data-coskin-plate") === (state.plateFx || "raise"));
 
   // —— 图片上传（快捷槽）——
   const quickFromDataUrl = async (rawDataUrl, name) => {
@@ -1548,6 +1593,8 @@ export const RESTORE_SCRIPT = `(() => {
   for (const el of document.querySelectorAll("[data-cs-lifted]")) {   // 撤销首页内容上移
     el.style.transform = el.dataset.csPrevTf || "";
     delete el.dataset.csLifted; delete el.dataset.csPrevTf; delete el.dataset.csLiftPx;
+    if (el.dataset.csPrevZ !== undefined) { el.style.zIndex = el.dataset.csPrevZ || ""; delete el.dataset.csPrevZ; }
+    if (el.dataset.csPrevPosZ !== undefined) { el.style.position = el.dataset.csPrevPosZ || ""; delete el.dataset.csPrevPosZ; }
     if (!el.getAttribute("style")) el.removeAttribute("style");
   }
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
