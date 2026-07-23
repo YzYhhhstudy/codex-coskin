@@ -248,6 +248,15 @@ npm run test:home     # 只跑首页装饰（100 条）
 
 只连它自己拉起来的无头 Chrome（临时 profile、端口 9666/9667），不碰你正在用的 Codex。
 
+```bash
+npm run smoke         # 真机烟雾测试：连正在跑的 Codex，只读检查 DOM 契约还成不成立
+```
+
+mock 回归只能锁住「我们对真机的假设」，锁不住「真机变了」。Codex 一升级改了类名或结构，
+mock 照样全绿、真机却崩——`npm run smoke` 就是提前发现那件事的地方。
+它**全程只读**（只有 querySelector / getComputedStyle / getBoundingClientRect），
+不换肤、不改样式、不动焦点，可以一边用一边跑。
+
 ## 机制验证截图（控件齐全版模拟页：右侧面板/菜单/diff/终端全部跟随）
 
 | 官方原生基线 | 浅色纸面图（壁纸可见+纸色守卫） | 深色图 · 沉浸档 |

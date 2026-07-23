@@ -12,6 +12,7 @@
     "status": "node src/coskin.mjs status",
     "test": "node test/run-mock.mjs",
     "test:core": "node test/run-mock.mjs core",
-    "test:home": "node test/run-mock.mjs home"
+    "test:home": "node test/run-mock.mjs home",
+    "smoke": "node test/smoke-live.mjs"
   }
 }
