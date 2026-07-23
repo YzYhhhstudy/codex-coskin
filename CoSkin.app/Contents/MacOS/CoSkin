@@ -12,7 +12,7 @@ DIR="$(cd "$SELF/../../.." && pwd)"             # 仓库根（codex-coskin/）
 say_err() {
   # 无窗口启动器唯一的报错出口：一定要把真实原因带出来，否则用户和作者都在猜
   msg="$(printf '%s' "$1" | tr -d '\\"' | tr '\n' ' ' | cut -c1-700)"
-  osascript -e "display dialog \"$msg\" with title \"CoSkin\" buttons {\"好\"} default button \"好\"" >/dev/null 2>&1
+  osascript -e "tell application \"System Events\" to display dialog \"$msg\" with title \"CoSkin\" buttons {\"好\"} default button \"好\"" >/dev/null 2>&1
   exit 1
 }
 for need in "scripts/ensure-node.sh" "src/coskin.mjs"; do

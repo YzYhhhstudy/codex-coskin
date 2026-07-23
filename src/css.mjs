@@ -232,8 +232,9 @@ const PANEL_CSS = `
 #coskin-ui .coskin-mini.coskin-on { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.5); }
 #coskin-brand, #coskin-brand * { -webkit-app-region: no-drag; }
 #coskin-brand {
+  /* 靠左：新版顶栏中央有 Chat/Work 切换药丸，居中会跟它叠在一起——标题看不清，也点不到改名 */
   position: fixed; top: 0; z-index: 2147482998; pointer-events: none; display: none;
-  height: 46px; align-items: center; justify-content: center; gap: 10px;
+  height: 46px; align-items: center; justify-content: flex-start; gap: 10px; padding-left: 20px;
   font: 800 20px/1 ui-rounded, system-ui, -apple-system, sans-serif;
   letter-spacing: .1em; opacity: .92;
 }
@@ -672,6 +673,24 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     state.titleEl = best;
     return state.titleEl;
   };
+  // ChatGPT.app 同时承载 **Codex** 与 **ChatGPT（Chat/Work）** 两种模式，而且两边复用同一个
+  // home-suggestions 类名——不拦的话，切到 ChatGPT/Work 也会挂上标题板和酒色财气行书字，完全串味。
+  // 判据①产品名标签（Codex / ChatGPT）；②兜底：成对出现的 Chat/Work 切换器 = ChatGPT 模式。
+  // 认不出来时**保持装饰**（宁可不拦，也不误伤 Codex 首页）。
+  const inCodexMode = () => {
+    const label = D.querySelector('[class*="font-openai-sans"][class*="font-semibold"]');
+    const name = label ? (label.textContent || "").trim() : "";
+    if (name === "Codex") return true;
+    if (name === "ChatGPT") return false;
+    let chat = false, work = false;
+    for (const b of D.querySelectorAll("button")) {
+      const t = (b.textContent || "").trim();
+      if (t === "Chat") chat = true;
+      else if (t === "Work") work = true;
+      if (chat && work) return false;
+    }
+    return true;
+  };
   // 轮询：首页出现时挂品牌行与标题板，离开时收起；标题板插进锚容器（z-index:-1 垫底）
   const syncHome = () => {
     const brand = D.getElementById("coskin-brand");
@@ -691,6 +710,14 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       brand.style.display = "flex";
       brand.style.left = r.left + "px";
       brand.style.width = r.width + "px";
+    }
+    // 非 Codex 模式（ChatGPT / Work）：只保留品牌行与配色，首页装饰一律收起
+    if (!inCodexMode()) {
+      for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
+      for (const s of D.querySelectorAll("[data-cs-cards]")) { delete s.dataset.csCards; s.style.removeProperty("--cs-cards-w"); }
+      clearGlyphs();
+      clearTitleStyle();
+      return;
     }
     syncGlyphs(sug, active);
     // 锚容器 = 同时包含标题与卡片的最近祖先（标题找不到时退回卡片父级）

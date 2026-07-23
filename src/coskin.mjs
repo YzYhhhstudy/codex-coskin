@@ -199,8 +199,10 @@ const RESTART_QUESTION =
 async function guiConfirm(question) {
   try {
     if (process.platform === "darwin") {
+      // 必须借 System Events 弹：CoSkin.app 是 LSUIElement（不进 Dock 的后台型 app），
+      // 它自己弹的对话框不会被带到最前——用户压根看不见，表现就是"点了没反应"。
       const { stdout } = await run("osascript", ["-e",
-        `display dialog ${JSON.stringify(question)} with title "CoSkin" buttons {"取消", "重启"} default button "重启" cancel button "取消"`]);
+        `tell application "System Events" to display dialog ${JSON.stringify(question)} with title "CoSkin" buttons {"取消", "重启"} default button "重启" cancel button "取消"`]);
       return /重启/.test(stdout);
     }
     if (process.platform === "win32") {
@@ -214,7 +216,7 @@ async function guiConfirm(question) {
 async function guiAlert(message) {
   try {
     if (process.platform === "darwin") {
-      await run("osascript", ["-e", `display dialog ${JSON.stringify(message)} with title "CoSkin" buttons {"好"} default button "好"`]);
+      await run("osascript", ["-e", `tell application "System Events" to display dialog ${JSON.stringify(message)} with title "CoSkin" buttons {"好"} default button "好"`]);
     } else if (process.platform === "win32") {
       await run("powershell", ["-NoProfile", "-Command",
         `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show(${JSON.stringify(message)}, 'CoSkin')`]);
