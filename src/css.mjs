@@ -673,15 +673,19 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     state.titleEl = best;
     return state.titleEl;
   };
-  // 首页内容整体上移的比例（占窗高）。0.075 ≈ 999px 窗口上移 75px，
-  // 配合"板顶包住图标"后，板子上沿大约落在壁纸「是」字那一带。想再高就调大。
-  const LIFT_RATIO = 0.075;
+  // 板顶固定留在「工作区上界 + 50px」（用户指定）；内容随之整体上移到板内。
+  const PLATE_TOP_GAP = 50;
+  const CONTENT_PAD = 34;   // 内容（图标/标题）顶部距板顶的留白
+  // 品牌行左缘至少要避开左上角控件簇（Hide sidebar / Back / Forward，实测最右 230）——
+  // 侧边栏收起时主区贴到最左，不避让就会压在按钮上，功能点不动。
+  const BRAND_MIN_LEFT = 226;
   // 撤销上移：离开首页 / 非 Codex 模式 / 原图档都要把官方元素的 transform 还回去
   const clearLift = () => {
     for (const el of D.querySelectorAll("[data-cs-lifted]")) {
       el.style.transform = el.dataset.csPrevTf || "";
       delete el.dataset.csLifted;
       delete el.dataset.csPrevTf;
+      delete el.dataset.csLiftPx;
       if (!el.getAttribute("style")) el.removeAttribute("style");
     }
   };
@@ -722,8 +726,9 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const r = main.getBoundingClientRect();
     if (brand) {
       brand.style.display = "flex";
-      brand.style.left = r.left + "px";
-      brand.style.width = r.width + "px";
+      const bl = Math.max(r.left, BRAND_MIN_LEFT);
+      brand.style.left = bl + "px";
+      brand.style.width = Math.max(120, Math.round(r.right - bl)) + "px";
     }
     // 非 Codex 模式（ChatGPT / Work）：只保留品牌行与配色，首页装饰一律收起。
     // 注意：卡片样式在 CSS 里，JS 收不掉——靠 html[data-cs-codex] 开关整段作用域，
@@ -793,12 +798,28 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     // 内容整体上移（让原画舒展开）：标题块与卡片块**分别**挪——新版把它们放在不同子树，
     // 共同祖先连输入框一起装着，整体挪会把输入框也拽上去。逐笔记账，还原时精确恢复。
     const titleBox = title ? title.parentElement : null;
-    const lift = Math.max(0, Math.min(220, Math.round(innerHeight * LIFT_RATIO)));
-    for (const el of [titleBox, anchor]) {
-      if (!el) continue;
-      if (el.dataset.csPrevTf === undefined) el.dataset.csPrevTf = el.style.transform || "";
-      el.dataset.csLifted = "1";
-      el.style.transform = lift > 0 ? "translateY(-" + lift + "px)" : (el.dataset.csPrevTf || "");
+    // 量「自然位置」：当前位置 + 已应用的上移量，避免每拍在自己身上反复累加
+    const contentTopNow = () => {
+      const t0 = title ? title.getBoundingClientRect() : null;
+      if (!t0 || !titleBox) return sug.getBoundingClientRect().top;
+      let top = t0.top;
+      for (const e of titleBox.querySelectorAll("svg,img")) {
+        const ir = e.getBoundingClientRect();
+        if (ir.height > 10 && ir.height < 160 && ir.bottom <= t0.top + 8) top = Math.min(top, ir.top);
+      }
+      return top;
+    };
+    const prevLift = anchor.dataset.csLiftPx ? parseFloat(anchor.dataset.csLiftPx) : 0;
+    const naturalTop = contentTopNow() + prevLift;
+    const wantLift = Math.max(0, Math.round(naturalTop - (topBase + PLATE_TOP_GAP + CONTENT_PAD)));
+    if (Math.abs(wantLift - prevLift) > 3) {   // 阈值防抖，别每拍都写样式
+      for (const el of [titleBox, anchor]) {
+        if (!el) continue;
+        if (el.dataset.csPrevTf === undefined) el.dataset.csPrevTf = el.style.transform || "";
+        el.dataset.csLifted = "1";
+        el.style.transform = wantLift > 0 ? "translateY(-" + wantLift + "px)" : (el.dataset.csPrevTf || "");
+      }
+      anchor.dataset.csLiftPx = String(wantLift);
     }
     const aR = anchor.getBoundingClientRect();
     const sR = sug.getBoundingClientRect();
@@ -817,7 +838,8 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       tR && tR.height ? tR.top : sR.top,
       iconTopV === null ? Infinity : iconTopV,
     );
-    let plateTopV = Math.max(topBase + 14, Math.round(contentTopV - 34));
+    // 板顶固定：工作区上界 + 50。内容已按此上移，所以图标/标题必落在板内。
+    let plateTopV = Math.min(topBase + PLATE_TOP_GAP, Math.round(contentTopV - 10));
     const plateBottomV = Math.round(sR.bottom + 20);
     // 夹进合理区间：太扁不好看，太高会霸屏
     const h0 = plateBottomV - plateTopV;
@@ -1525,7 +1547,7 @@ export const RESTORE_SCRIPT = `(() => {
   delete document.documentElement.dataset.csCodex; // 卡片样式作用域开关
   for (const el of document.querySelectorAll("[data-cs-lifted]")) {   // 撤销首页内容上移
     el.style.transform = el.dataset.csPrevTf || "";
-    delete el.dataset.csLifted; delete el.dataset.csPrevTf;
+    delete el.dataset.csLifted; delete el.dataset.csPrevTf; delete el.dataset.csLiftPx;
     if (!el.getAttribute("style")) el.removeAttribute("style");
   }
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
