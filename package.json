@@ -9,6 +9,7 @@
   },
   "scripts": {
     "menu": "node src/coskin.mjs menu",
-    "status": "node src/coskin.mjs status"
+    "status": "node src/coskin.mjs status",
+    "test": "node test/run-core.mjs"
   }
 }

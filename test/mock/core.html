@@ -1,0 +1,47 @@
+<!doctype html>
+<html class="electron-light" lang="zh-CN" data-codex-window-type="electron">
+<head>
+<meta charset="utf-8">
+<title>coskin-core-mock</title>
+<style>
+  /* 基线 token 变量：注入会覆写这些，被采样元素据此变色（真机取值近似） */
+  :root {
+    --color-token-foreground: #1a1c1f;
+    --color-token-side-bar-background: rgba(245, 246, 248, 0.92);
+    --color-token-git-decoration-added-resource-foreground: #2e7d32;
+    --color-background-button-primary: #3b6fe0;
+    --vscode-menu-background: #ffffff;
+    --vscode-editor-background: #f6f7f9;
+  }
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; color: var(--color-token-foreground); background: #eef0f3; }
+  #root { min-height: 100vh; position: relative; }
+  .app { display: flex; min-height: 100vh; }
+  aside.app-shell-left-panel { width: 220px; background: var(--color-token-side-bar-background); padding: 12px; }
+  [data-vscode-context] { flex: 1; background: #ffffff; }
+  main.main-surface { min-height: 100vh; position: relative; padding: 20px; }
+  /* 被采样的官方控件：颜色都来自上面的 token 变量，注入覆写变量→它们跟着变 */
+  [role="menu"] { background: var(--vscode-menu-background); padding: 8px; border: 1px solid #ddd; width: 180px; }
+  .diff-add { color: var(--color-token-git-decoration-added-resource-foreground); }
+  .term { background: var(--vscode-editor-background); height: 40px; margin-top: 8px; }
+  .btn-primary { background: var(--color-background-button-primary); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; }
+  .cm-editor { background: rgba(255, 255, 255, 0.6); padding: 8px; margin-top: 8px; }
+  .composer-surface-chrome { background: #fff; padding: 10px; margin-top: 8px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="app">
+    <aside class="app-shell-left-panel">sidebar</aside>
+    <div data-vscode-context>
+      <main class="main-surface">
+        <div role="menu"><div class="diff-add">+ added line</div></div>
+        <div class="term">$ terminal</div>
+        <div class="cm-editor">review / doc panel</div>
+        <div class="composer-surface-chrome">composer</div>
+        <button class="btn-primary">Send</button>
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>
