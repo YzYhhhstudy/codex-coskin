@@ -104,7 +104,7 @@ glass(20, 1.08) +
 "}\n" +
 ":focus-visible { outline: 2px solid " + colors.accent + "99 !important; outline-offset: 1px; }\n" +
 "/* 首页建议卡：可点的功能入口，任何档位都要有常驻底色（可读性工程的例外条款） */\n" +
-"[class*=\"home-suggestions\"] button {\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button {\n" +
 "  background: " + colors.surfaceRaised + a2hex(alpha.veil === 0 ? 0.3 : 0.46) + " !important;\n" +
 "  border: 1px solid " + colors.accent + "30 !important;\n" +
 "  border-radius: " + (radius + 2) + "px !important;\n" +
@@ -116,17 +116,17 @@ glass(20, 1.08) +
 "  font-size: 20px !important; padding: 16px 14px !important;\n" +
 "  transition: transform .16s ease, border-color .16s ease;\n" +
 "}\n" +
-"[class*=\"home-suggestions\"] button > span { justify-content: center !important; text-align: center !important; }\n" +
-"[class*=\"home-suggestions\"] button:hover {\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button > span { justify-content: center !important; text-align: center !important; }\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button:hover {\n" +
 "  transform: translateY(-2px);\n" +
 "  border-color: " + colors.accent + "7a !important;\n" +
 "  box-shadow: 0 10px 26px " + colors.accent + "26 !important;\n" +
 "}\n" +
-"[class*=\"home-suggestions\"] button svg { width: 40px !important; height: 40px !important; color: " + colors.accent + " !important; }\n" +
-"[class*=\"home-suggestions\"] button span:has(> svg) { width: auto !important; height: auto !important; justify-content: center !important; }\n" +
-"[class*=\"home-suggestions\"] button [class*=\"justify-between\"] { justify-content: center !important; }\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button svg { width: 40px !important; height: 40px !important; color: " + colors.accent + " !important; }\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button span:has(> svg) { width: auto !important; height: auto !important; justify-content: center !important; }\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button [class*=\"justify-between\"] { justify-content: center !important; }\n" +
 "/* 真机卡片文字带 mt-auto 被推到底部、图标贴顶留大空档；收掉自动上边距让图标与文字靠拢居中 */\n" +
-"[class*=\"home-suggestions\"] button [class*=\"mt-auto\"] { margin-top: 6px !important; }\n" +
+"[data-cs-codex] [class*=\"home-suggestions\"] button [class*=\"mt-auto\"] { margin-top: 6px !important; }\n" +
 "/* 卡片行加宽只在横幅激活时生效（data-cs-cards 标记）——否则会搅坏官方原生布局 */\n" +
 "[data-cs-cards] {\n" +
 "  width: var(--cs-cards-w, auto) !important;\n" +
@@ -698,6 +698,7 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
     const main = D.querySelector("main.main-surface");
     const active = window.__coskinActive ? THEMES.find((x) => x.id === window.__coskinActive) : null;
     if (!active || !sug || !main) {
+      delete D.documentElement.dataset.csCodex;
       if (brand) brand.style.display = "none";
       for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
       for (const s of D.querySelectorAll("[data-cs-cards]")) { delete s.dataset.csCards; s.style.removeProperty("--cs-cards-w"); }
@@ -711,14 +712,18 @@ export function buildInjectionScript(themes, activeId, updateInfo = null) {
       brand.style.left = r.left + "px";
       brand.style.width = r.width + "px";
     }
-    // 非 Codex 模式（ChatGPT / Work）：只保留品牌行与配色，首页装饰一律收起
+    // 非 Codex 模式（ChatGPT / Work）：只保留品牌行与配色，首页装饰一律收起。
+    // 注意：卡片样式在 CSS 里，JS 收不掉——靠 html[data-cs-codex] 开关整段作用域，
+    // 否则 ChatGPT 的「文字行」会被我们画成大方块卡片（真机踩过）。
     if (!inCodexMode()) {
+      delete D.documentElement.dataset.csCodex;
       for (const p of D.querySelectorAll(".cs-hero-plate")) removePlate(p);
       for (const s of D.querySelectorAll("[data-cs-cards]")) { delete s.dataset.csCards; s.style.removeProperty("--cs-cards-w"); }
       clearGlyphs();
       clearTitleStyle();
       return;
     }
+    D.documentElement.dataset.csCodex = "1"; // 开启卡片样式作用域（仅 Codex 首页）
     syncGlyphs(sug, active);
     // 锚容器 = 同时包含标题与卡片的最近祖先（标题找不到时退回卡片父级）
     const title = findTitle(main);
@@ -1479,6 +1484,7 @@ export const RESTORE_SCRIPT = `(() => {
     "__coskinDeleteTheme", "__coskinSyncActions", "__coskinQuickFromDataUrl", "__coskinSetPetImage",
     "__coskinClearPetImage", "__coskinPlacePet", "__coskinPetTick", "__coskinPetScale", "__coskinPanelScale",
     "__coskinState"]) delete window[k];
+  delete document.documentElement.dataset.csCodex; // 卡片样式作用域开关
   for (const id of ["coskin-style", "coskin-ui", "coskin-ui-style", "coskin-stage", "coskin-brand", "coskin-pet"]) document.getElementById(id)?.remove();
   for (const p of document.querySelectorAll(".cs-hero-plate")) {
     const col = p.parentElement;
