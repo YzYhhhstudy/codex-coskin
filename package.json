@@ -10,6 +10,8 @@
   "scripts": {
     "menu": "node src/coskin.mjs menu",
     "status": "node src/coskin.mjs status",
-    "test": "node test/run-core.mjs"
+    "test": "node test/run-mock.mjs",
+    "test:core": "node test/run-mock.mjs core",
+    "test:home": "node test/run-mock.mjs home"
   }
 }

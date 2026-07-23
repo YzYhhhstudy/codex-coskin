@@ -63,7 +63,9 @@ Windows 上 Codex Desktop 是 ChatGPT 桌面应用，两种形态：
 `.command` 脚本对应新增 `.bat`/`.ps1` 双击入口（UTF-8 BOM + CRLF，中文路径要过测试）。
 
 ### 验收
-`test/mock-verify.mjs` 与 `theme-lint.mjs` 本就跨平台（无头 Chrome/Edge 即可）。
+`npm test`（core + home 两套 mock 回归）与 `theme-lint.mjs` 本就跨平台——
+runner 的 `findChrome()` 已带 Windows 路径，也认 `CHROME=` 环境变量，Edge 同样可用。
+所以**注入逻辑本身在 Windows 上可以先自测**，真机验证只剩宿主层那几项。
 Windows 专属只需补：AUMID 解析、WM_CLOSE 优雅退出、带参启动三项的真机验证。
 **建议先只做独立安装版（低风险），Store/MSIX 标注"实验性"。**
 

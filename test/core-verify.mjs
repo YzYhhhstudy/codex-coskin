@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // 自包含核心回归：token 接管 / 面板 / 配色编辑器 / 桌宠 / 缩放 / 可见度 / 还原 / 闭包清理。
 //
-// 一般不直接跑这个——用 `node test/run-core.mjs`（它会自己起服务和 Chrome）。
+// 一般不直接跑这个——用 `node test/run-mock.mjs core`（它会自己起服务和 Chrome）。
 // 直接跑需要自备一个加载了 test/mock/core.html 的 Chrome：node test/core-verify.mjs --port 9666
 //
-// 覆盖范围刻意收敛：**只测平台无关的核心机制**，不测首页装饰（标题板/行书字/模式判别）——
-// 那些需要复刻整页 Codex DOM，等真要大改时再补（见 ENGINEERING_NOTES）。
+// 覆盖范围刻意收敛：**只测平台无关的核心机制**。
+// 首页装饰（板子几何/行书字/模式判别）在 home-verify.mjs，那套按真机 DOM 形状吃饭，分开跑更好排查。
 
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";

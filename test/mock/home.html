@@ -1,0 +1,153 @@
+<!doctype html>
+<html class="electron-light" lang="zh-CN" data-codex-window-type="electron">
+<head>
+<meta charset="utf-8">
+<title>coskin-home-mock</title>
+<!--
+  首页装饰回归用的假 Codex 首页。刻意复刻的几个「真机形状」，改动前请先读：
+
+  ① 标题与卡片在**不同子树**：锚容器（= 卡片行的父级）里没有标题块。
+     真机新版就是这样拆的，注入代码也据此把标题块和锚容器分别上移。
+     如果这里图省事把标题塞进锚容器，上移会叠加两次，几何断言全部失真。
+  ② 输入框在锚容器**之外**：它不该跟着内容一起被拽上去（真机踩过）。
+  ③ 顶栏按钮从 x≈88 起（macOS 红绿灯预留位），右缘 ≈230：品牌行要按实测让位。
+  ④ 标题带结构类名 heading-xl，文案是新版的 "What should we build in X?"，
+     故意不是旧版的 "work on"——findTitle 必须靠结构认出它。
+  ⑤ 卡片文字是**单个叶子元素**。真机还有「前缀 span + 正文 span」的变体，形状不确定，
+     这里不猜；按原文认卡的能力由 data-cs-orig 快照那条断言覆盖。
+-->
+<style>
+  :root {
+    --color-token-foreground: #1a1c1f;
+    --color-token-side-bar-background: rgba(245, 246, 248, 0.92);
+    --vscode-editor-background: #f6f7f9;
+  }
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; color: var(--color-token-foreground); background: #eef0f3; }
+  #root { min-height: 100vh; }
+  header.app-header-tint {
+    /* border-box：顶栏必须正好 48px 高，几何断言全从它的下边缘起算 */
+    position: sticky; top: 0; height: 48px; box-sizing: border-box; display: flex; align-items: center;
+    padding-left: 88px; gap: 8px; background: #fff; border-bottom: 1px solid #e3e5e9;
+  }
+  header.app-header-tint button, header.app-header-tint a {
+    height: 28px; min-width: 40px; border: 1px solid #dcdee3; background: #fafbfc;
+    border-radius: 8px; font-size: 12px; cursor: pointer;
+  }
+  /* 产品名标签：真机用这两个类，inCodexMode 靠它认模式 */
+  .font-openai-sans.font-semibold { margin-left: 14px; font-weight: 600; font-size: 14px; }
+  .app { display: flex; }
+  aside.app-shell-left-panel { width: 220px; background: var(--color-token-side-bar-background); padding: 12px; box-sizing: border-box; }
+  aside.app-shell-left-panel[hidden] { display: none; }
+  /* min-width:0 + overflow-x:clip：卡片行被加宽后会横向溢出，
+     若不压住，flex 项的 min-width:auto 会被内容撑大，主区宽度就成了假的，
+     板宽/紧凑宽这类按主区算的断言全跟着漂。真机主区是定宽的。 */
+  [data-vscode-context] { flex: 1; min-width: 0; background: #fff; }
+  main.main-surface { position: relative; min-height: calc(100vh - 48px); overflow-x: clip; }
+  .home-outer { padding: 120px 44px 0; display: flex; flex-direction: column; align-items: center; }
+  /* titleBox = 标题的父级：图标 + 标题，注入会给它加 transform / z-index */
+  .title-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .title-wrap svg { width: 48px; height: 48px; }
+  .heading-xl { margin: 0; font-size: 30px; font-weight: 500; color: #6b7280; }
+  /* 锚容器：只包卡片行，不包标题、不包输入框 */
+  /* 用块级容器：注入会给卡片行写 margin-left:50% + translateX(-50%)，
+     若父级是 flex，卡片行会被 flex-shrink 压回去，宽度断言就成了 mock 自己的假象 */
+  .cards-wrap { margin-top: 32px; width: 100%; }
+  .home-suggestions-grid { display: flex; gap: 12px; max-width: 720px; margin: 0 auto; }
+  .home-suggestions-grid button {
+    flex: 1; min-width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 12px; border: 1px solid #e3e5e9; border-radius: 12px; background: #fff;
+    font-size: 14px; color: #374151; cursor: pointer;
+  }
+  .home-suggestions-grid button svg { width: 22px; height: 22px; }
+  .composer-surface-chrome {
+    margin: 40px auto 0; width: 640px; padding: 14px; border: 1px solid #e3e5e9;
+    border-radius: 14px; background: #fff;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <header class="app-header-tint">
+    <button id="hdr-menu">☰</button>
+    <button id="hdr-new">＋</button>
+    <a id="hdr-hist">历史</a>
+    <span class="font-openai-sans font-semibold" id="product-label">Codex</span>
+  </header>
+  <div class="app">
+    <aside class="app-shell-left-panel">sidebar</aside>
+    <div data-vscode-context>
+      <main class="main-surface">
+        <div class="home-outer" id="home-outer">
+          <div class="title-wrap" id="title-wrap">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#9aa0a6" stroke-width="2"/></svg>
+            <h1 class="heading-xl">What should we build in <span>coskin</span>?</h1>
+          </div>
+          <div class="cards-wrap" id="cards-wrap">
+            <div class="home-suggestions-grid" id="sug"></div>
+          </div>
+        </div>
+        <div class="composer-surface-chrome" id="composer">composer</div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+// 一级卡（对应 xiuxing 的 decor.cards 四条 match）+ 一条注定匹配不上的对照卡
+const PRIMARY = ["Explore and understand", "Build a new feature", "Review code", "Fix issues"];
+const UNMATCHED = "Something else entirely";
+// 二级条目（对应 decor.subCards）——真机点开一级卡后复用同一批按钮槽
+const SUB = ["learn how a feature works", "implementation options", "architectural approaches"];
+
+function makeCard(text) {
+  const b = document.createElement("button");
+  const ic = document.createElement("span");
+  ic.innerHTML = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="#9aa0a6" stroke-width="2"/></svg>';
+  const label = document.createElement("span");
+  label.className = "mt-auto";
+  label.textContent = text;
+  b.append(ic, label);
+  return b;
+}
+const productLabel = document.getElementById("product-label");
+function setCards(list) {
+  const sug = document.getElementById("sug");
+  sug.textContent = "";
+  for (const t of list) sug.appendChild(makeCard(t));
+}
+setCards(PRIMARY.concat(UNMATCHED));
+
+// —— 测试用的场景开关（只改 mock 自己的 DOM，不碰注入产物）——
+window.__mock = {
+  cards: { primary: PRIMARY, unmatched: UNMATCHED, sub: SUB },
+  setCards,
+  // 产品名：Codex / ChatGPT / ""（认不出来，走兜底判据）
+  // 注意留住引用——摘下来之后 getElementById 就找不着了，还得挂回去
+  setProduct(name) {
+    const el = productLabel;
+    if (!name) { el.remove(); return; }
+    if (!el.isConnected) document.querySelector("header.app-header-tint").appendChild(el);
+    el.textContent = name;
+  },
+  // Chat/Work 切换药丸：inCodexMode 的兜底判据
+  setChatWork(on) {
+    const hdr = document.querySelector("header.app-header-tint");
+    for (const id of ["pill-chat", "pill-work"]) {
+      const old = document.getElementById(id);
+      if (old) old.remove();
+    }
+    if (!on) return;
+    for (const [id, txt] of [["pill-chat", "Chat"], ["pill-work", "Work"]]) {
+      const b = document.createElement("button");
+      b.id = id; b.textContent = txt;
+      hdr.appendChild(b);
+    }
+  },
+  collapseSidebar(on) { document.querySelector("aside.app-shell-left-panel").hidden = !!on; },
+  // 离开首页：真机是卡片行整块消失
+  leaveHome() { document.getElementById("cards-wrap").style.display = "none"; document.getElementById("sug").className = "gone-suggestions-x"; },
+  enterHome() { document.getElementById("cards-wrap").style.display = ""; document.getElementById("sug").className = "home-suggestions-grid"; },
+};
+</script>
+</body>
+</html>

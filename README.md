@@ -234,9 +234,19 @@ CSS（主题）和一小段 JS（右下角 🎨 切换面板）。主题 CSS 由
 - CDP 即使只绑 127.0.0.1 也**没有鉴权**，皮肤会话期间本机同权限进程都能连上这个端口。
   不换肤时正常启动 Codex，端口就不存在。
 - Codex 升级如果改了界面结构或启动参数，选择器需要适配（`src/css.mjs` 一处集中维护）。
-- 机制验证在隔离的无头 Chromium + 模拟 Codex DOM 上完成（`test/mock-verify.mjs`，
+- 机制验证在隔离的无头 Chromium + 模拟 Codex DOM 上完成（`npm test`，153 条断言；
   截图在 `docs/verify/`）；真机 Codex 的选择器已对齐社区逆向成果，首次真机应用后如有出入，
   调 `src/css.mjs` 即可。
+
+## 跑回归
+
+```bash
+npm test              # core + home，153 条断言，自己起无头 Chrome，跑完自清理
+npm run test:core     # 只跑核心机制（53 条）
+npm run test:home     # 只跑首页装饰（100 条）
+```
+
+只连它自己拉起来的无头 Chrome（临时 profile、端口 9666/9667），不碰你正在用的 Codex。
 
 ## 机制验证截图（控件齐全版模拟页：右侧面板/菜单/diff/终端全部跟随）
 
@@ -256,7 +266,9 @@ src/css.mjs         主题 CSS + 🎨 面板生成（选择器集中在这）
 src/palette.mjs     取色（页面内 canvas）+ 配色推导 + 对比度兜底
 themes/*.json       内置主题（纯渐变）
 themes/custom/      你生成的图片主题（已 gitignore）
-test/mock-verify.mjs  全链路回归验证
+test/run-mock.mjs   回归启动器（自起服务 + 无头 Chrome）
+test/mock/          假 Codex 页：core.html（核心机制）/ home.html（首页装饰）
+test/*-verify.mjs   断言：core-verify 53 条 · home-verify 100 条
 ```
 
 ## 致谢与许可
