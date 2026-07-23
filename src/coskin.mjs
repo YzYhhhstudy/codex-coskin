@@ -298,9 +298,14 @@ async function ensureSkillInstalled() {
 async function resume(port, confirmRestart, doUpdate = false) {
   await ensureSkillInstalled();
   if (doUpdate) {
-    log("检查更新…");
-    const r = await gitPull();
-    log(r.ok ? (r.msg || "已是最新。") : `更新跳过（${r.msg.split("\n")[0]}），继续用当前版本。`);
+    // ZIP 安装没有 .git，别去跑 git pull 报一串看不懂的错——直接说清楚怎么升级
+    if (!existsSync(join(ROOT, ".git"))) {
+      log("ZIP 安装：跳过自动更新（想升级就去 GitHub 重新下载最新 ZIP 覆盖本文件夹）。");
+    } else {
+      log("检查更新…");
+      const r = await gitPull();
+      log(r.ok ? (r.msg || "已是最新。") : `更新跳过（${r.msg.split("\n")[0]}），继续用当前版本。`);
+    }
   }
   const themes = await loadAllThemes();
   const last = await lastTheme();

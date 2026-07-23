@@ -11,7 +11,8 @@
 
 **9 款内置主题全部是纯 CSS 渐变**（零素材、零版权风险），开箱即用。
 
-> 状态：机制与控件级接管已在隔离环境验证（60+ 项断言，见 `docs/verify/`），代码零依赖（Node 22+）。
+> 状态：机制与控件级接管已在隔离环境验证（60+ 项断言，见 `docs/verify/`），代码零依赖。
+> **全新电脑只要装了 Codex 就能双击直接跑** —— 没有 Node 会自动免密装绿色版到用户目录。
 > **macOS**：完整支持、日期化真机验证，含可钉 Dock 的 `CoSkin.app` 清爽启动器。
 > **Windows**：独立安装版已实现（`双击换肤(无窗口).vbs` / `双击换肤.bat`），但尚未真机验证；
 > Microsoft Store/MSIX 版暂不支持（无法可靠带调试参数启动）。
@@ -41,23 +42,30 @@
 
 ## 安装（第一次用）
 
-前置：[Node.js 22+](https://nodejs.org) + 已装好的 Codex Desktop。零依赖、不用 `npm install`。
+**唯一前置：装好 Codex Desktop。就这一个。**
+**没有 Node 也没关系** —— 首次运行时 CoSkin 会自动把官方绿色版 Node 装进你的用户目录
+（macOS `~/.coskin/node`、Windows `%LOCALAPPDATA%\CoSkin\node`），约 50MB、只此一次、
+**全程不需要密码 / 不需要管理员**（不碰任何系统目录，卸载就是删掉那个文件夹）。
+下载包会用 nodejs.org 官方 SHA-256 校验，不匹配直接丢弃。当然，系统里已经有 Node 22+ 就直接用它。
 
-**先把仓库拿下来（两个平台通用）：**
+**拿到代码：两种都行**
 
 ```bash
+# ① git clone（推荐：以后能一键自动更新）
 git clone https://github.com/YzYhhhstudy/codex-coskin.git
 ```
 
+② 或者在 GitHub 页面点 **Code → Download ZIP**，**用访达（Finder）双击解压**。
+> ⚠️ 别用命令行 `unzip` 解压：老版 Info-ZIP 会把中文文件名弄成乱码。访达/资源管理器解压没问题
+> （实测中文名和可执行权限都完好）。ZIP 装的没有 `.git`，自动更新会跳过并提示你重新下载新 ZIP。
+
 ### macOS
 
-```bash
-cd codex-coskin
-# macOS 会给下载的脚本加隔离标记，解除一次（否则双击会被拦）：
-xattr -dr com.apple.quarantine .
-```
+进 `codex-coskin` 文件夹，**双击 `CoSkin.app`**（推荐，无终端窗口、可钉 Dock）
+或 `双击换肤.command`（会显示进度，方便排错）。
 
-然后**双击 `双击换肤.command`**（第一次可能要右键 →「打开」放行一次）。
+> 首次打开被 Gatekeeper 拦下（未签名 App）：**右键 →「打开」**放行一次即可，不需要开终端。
+> 如果你偏好命令行一次性解除：`xattr -dr com.apple.quarantine .`
 
 ### Windows
 
@@ -188,8 +196,9 @@ Codex 在运行时，任何会触发重启的命令都会**先当面征得同意
 - **macOS —— 用 `CoSkin.app`（推荐）**：仓库里带了一个 `CoSkin.app`，**双击它 = 无终端窗口地打开带皮肤的 Codex**，
   可以**拖到 Dock 钉住**，当成你的「Codex（皮肤版）」图标。它做的和 `双击换肤.command` 一样（更新 + 恢复上次主题），
   只是没有终端：需要重启 Codex 时弹一个**系统对话框**问你，完成后弹条通知。
-  > 第一次打开：`git clone` 下来的可直接双击；用 ZIP 下载的要先 `chmod +x CoSkin.app/Contents/MacOS/CoSkin`，
-  > 并右键 →「打开」放行一次（未签名 App，Gatekeeper 会拦第一次）。
+  > 第一次打开：右键 →「打开」放行一次（未签名 App，Gatekeeper 只拦第一次）。
+  > `git clone` 和 **ZIP（用访达解压）** 两种拿法都可以直接双击 —— 实测访达解压会完整保留可执行权限，
+  > 不需要 `chmod`。（只有用命令行 `unzip` 解压才会丢权限并弄乱中文名，别那么干。）
 - **Windows —— 用 `双击换肤(无窗口).vbs`（推荐）**：Windows 没有 `.app` 格式，这个 `.vbs` 就是它的等价物——
   **双击它 = 不弹黑窗口地打开带皮肤的 Codex**，可以**固定到任务栏**，点一下就开。它做的和 `双击换肤.bat` 一样
   （更新 + 恢复上次主题 + 自动装好技能），只是没有控制台：需要重启 Codex 时弹**系统对话框**问你。

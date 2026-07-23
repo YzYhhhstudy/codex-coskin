@@ -122,6 +122,20 @@
 - **`.app` 清爽启动器（v0.28.0）**：`CoSkin.app`（放仓库内，靠自身位置 `../../..` 找仓库根）= 无终端窗口地
   `resume --update --gui`，可钉 Dock。`LSUIElement=true` 让它跑完不留 Dock/切换器残影。node 发现要手动补
   nvm/homebrew/volta（GUI App 的 PATH 很干净），找不到 node 直接 osascript 弹窗。ZIP 下载会丢 +x 位、须 `chmod +x`。
+- **运行环境自举（v0.31.0）——「全新电脑只装了 Codex 也能双击即用」**：
+  `scripts/ensure-node.sh`（mac/Linux）与 `scripts/launch.ps1`（win）三级解析 Node：
+  ① 自带副本 → ② 系统 node（含 nvm/homebrew/volta）→ ③ **免密下载官方绿色版**。
+  - **免 root 的关键**：只写 `~/.coskin/node`（win `%LOCALAPPDATA%\CoSkin\node`），绝不碰 `/usr/local` 等系统路径 → 不弹密码/UAC。
+  - **裸机可用的工具链**：macOS 自带 `curl`/`tar`/`shasum`；Windows 自带 PowerShell `Invoke-WebRequest`/`Expand-Archive`。不需要预装任何东西。
+  - **完整性**：从 `latest-v22.x/SHASUMS256.txt` 取包名+官方哈希（不硬编码版本，不会过期），下完 `shasum -a 256` 比对，不符即丢。
+  - **只解 `*/bin/node`**：CoSkin 零依赖，不要 npm/头文件 → 磁盘 187MB 降到 **108MB**。实测下载+校验+解压 **8.8 秒**。
+  - 无窗口启动器没有终端，下载期间用 `osascript display notification` 报进度，否则看起来像卡死。
+  - **借 Codex 自带 Node 走不通**：`ELECTRON_RUN_AS_NODE=1` 对 ChatGPT.app 无效（转发给已运行实例），
+    说明 Codex 也关掉了 Electron 的 `runAsNode` 保险丝——和 Claude Desktop 同一种加固。
+- **ZIP 分发实测可行**：`git archive`（=GitHub Download ZIP）会把 `755` 写进包；
+  **访达/`ditto` 解压后中文名与可执行位都完好**，`.command`/`.app` 直接可双击，不需要 `chmod`。
+  但**命令行 Info-ZIP `unzip` 会把中文名弄成乱码并丢权限**——文档里明确让用户用访达解压。
+  ZIP 装的没有 `.git`：`resume --update` 检测到就跳过 git 并提示"重新下载新 ZIP"，不再吐 `not a git repository` 的原始报错。
 - **Windows 没有 `.app`**：等价物是 `双击换肤(无窗口).vbs`（`WScript.Shell.Run(..., 0, True)` 隐藏窗口跑
   `resume --update --gui`；先 `where node` 查不到就 MsgBox）。确认/报错走 `--gui` 的 PowerShell MsgBox。
   `.vbs` 的中文 MsgBox 有编码风险、且 Windows 端整体尚未在真机充分验证——已在文件头与 README 标注。
