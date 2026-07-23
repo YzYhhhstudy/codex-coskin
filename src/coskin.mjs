@@ -14,7 +14,7 @@ import readline from "node:readline/promises";
 
 import { withPageTargets, Cdp, listTargets, pageTargets } from "./cdp.mjs";
 import { DEFAULT_PORT, appState, ensureSkinnable, findApp } from "./launcher.mjs";
-import { RESTORE_SCRIPT, PROBE_SCRIPT, backgroundFromTheme, buildInjectionScript } from "./css.mjs";
+import { CONTRACT_SCRIPT, RESTORE_SCRIPT, PROBE_SCRIPT, backgroundFromTheme, buildInjectionScript } from "./css.mjs";
 import { buildPaletteExpression, coskinDecideAppearance } from "./palette.mjs";
 import { coskinCompileTokens } from "./tokens.mjs";
 
@@ -257,6 +257,25 @@ function warnPartialFailure(action, failed, failures) {
   for (const f of failures ?? []) log(`   · ${f.url ?? "未知窗口"} —— ${f.message}`);
 }
 
+// Codex 升级改了类名或结构时，mock 回归照样全绿、用户却看见板子歪了——与其让用户来发现，
+// 不如换肤当场只读自检一次，说人话。**永远不影响换肤结果**：自检自己出错就当没这回事。
+async function warnIfContractBroken(port) {
+  let report = null;
+  try {
+    const results = await withPageTargets(port, (cdp) => cdp.evaluate(CONTRACT_SCRIPT));
+    report = results.find((r) => r.ok && r.value && Array.isArray(r.value.broken))?.value ?? null;
+  } catch { return; }
+  if (!report || !report.broken.length) return;
+  log("⚠️ 自检：Codex 的界面结构和我们的假设对不上了，下面这些会失效——");
+  for (const b of report.broken) log(`   · ${b.what} —— ${b.effect}`);
+  log("   多半是 Codex 升级换了界面。跑 `npm run smoke` 看完整报告，改 src/css.mjs 里的选择器即可。");
+  if (GUI) {
+    await guiAlert("CoSkin 自检：Codex 界面结构变了，部分效果可能失效。\n\n"
+      + report.broken.map((b) => "· " + b.what + " —— " + b.effect).join("\n")
+      + "\n\n换肤本身已经完成，配色多半还在。");
+  }
+}
+
 async function applyTheme(port, themeId, confirmRestart = null) {
   const themes = await loadAllThemes();
   const theme = themes.find((t) => t.id === themeId);
@@ -271,6 +290,7 @@ async function applyTheme(port, themeId, confirmRestart = null) {
   await rememberTheme(theme.id);
   log(`✅ 已应用「${theme.name}」（${applied} 个窗口）。右下角 🎨 按钮可随时一键切换或还原。`);
   warnPartialFailure("应用", failed, failures);
+  await warnIfContractBroken(port);
   if (updateInfo.updateAvailable) log(`🔵 有新版本 v${updateInfo.latest}（当前 v${updateInfo.current}）——双击「双击换肤」会自动拉取更新。`);
   return theme;
 }

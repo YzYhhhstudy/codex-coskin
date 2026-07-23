@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Cdp, cdpAlive, listTargets, pageTargets } from "../src/cdp.mjs";
-import { PROBE_SCRIPT, RESTORE_SCRIPT, backgroundFromTheme, buildInjectionScript } from "../src/css.mjs";
+import { CONTRACT_SCRIPT, PROBE_SCRIPT, RESTORE_SCRIPT, backgroundFromTheme, buildInjectionScript } from "../src/css.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const argv = process.argv;
@@ -356,6 +356,39 @@ check("所有 data-cs-* 标记归零", (await cdp.evaluate(`(() => {
 })()`)) === 0);
 check("首页残留元素为零（.cs-glyph / .cs-hero-plate / .cs-hero-art）",
   (await cdp.evaluate(`document.querySelectorAll(".cs-glyph, .cs-hero-plate, .cs-hero-art").length`)) === 0);
+
+console.log("\n[14] 启动自检：结构变了要当场报，没变不许扰民");
+const contract = () => cdp.evaluate(CONTRACT_SCRIPT);
+let ct = await contract();
+check("健康页面：零告警（不扰民）", ct.broken.length === 0, JSON.stringify(ct.broken));
+check("认出当前在首页", ct.onHome === true);
+// 逐个破坏硬契约，确认都能被点名
+for (const [sel, cls, wantWhat] of [
+  ["main.main-surface", "main-surface", "主区容器"],
+  ["header.app-header-tint", "app-header-tint", "顶栏"],
+  ["aside.app-shell-left-panel", "app-shell-left-panel", "侧栏"],
+]) {
+  await cdp.evaluate(`(() => { const e = document.querySelector("${sel}"); e.classList.remove("${cls}"); e.dataset.csTmp = "1"; })()`);
+  ct = await contract();
+  check(`「${wantWhat}」选择器失效时会被点名`, ct.broken.some((b) => b.what === wantWhat), JSON.stringify(ct.broken.map((b) => b.what)));
+  check(`「${wantWhat}」的告警带人话后果`, ct.broken.find((b) => b.what === wantWhat)?.effect?.length > 3);
+  await cdp.evaluate(`(() => { const e = document.querySelector("[data-cs-tmp]"); e.classList.add("${cls}"); delete e.dataset.csTmp; })()`);
+}
+ct = await contract();
+check("修回去后告警自动消失", ct.broken.length === 0, JSON.stringify(ct.broken));
+// 标题结构类名被换掉——这正是当年「板子涨到 64%」的根因，必须能提前预警
+await cdp.evaluate(`document.querySelector(".heading-xl").className = "some-new-codex-class"; "renamed"`);
+ct = await contract();
+check("标题结构类名被改时提前预警（当年 64% 霸屏的根因）", ct.broken.some((b) => b.what.includes("标题结构")), JSON.stringify(ct.broken.map((b) => b.what)));
+await cdp.evaluate(`document.querySelector(".some-new-codex-class").className = "heading-xl"; "restored"`);
+// 不在首页时，首页那几条一律不报——用户在会话里换肤不该收到假警报
+await cdp.evaluate(`window.__mock.leaveHome(); "leave"`);
+ct = await contract();
+check("非首页时 onHome=false", ct.onHome === false);
+check("非首页时不报首页项（不制造假警报）", ct.broken.length === 0, JSON.stringify(ct.broken));
+await cdp.evaluate(`window.__mock.enterHome(); "enter"`);
+check("自检全程只读：页面上没留下任何 coskin 痕迹",
+  (await cdp.evaluate(`document.querySelectorAll("[id^=coskin], .cs-glyph, .cs-hero-plate").length`)) === 0);
 
 cdp.close();
 console.log(failures.length === 0

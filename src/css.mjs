@@ -1650,6 +1650,41 @@ export const RESTORE_SCRIPT = `(() => {
   return "coskin:restored";
 })()`;
 
+// 启动自检：换肤完在页面里只读核对「缺了就会明显坏」的硬契约。
+// 为什么要它：mock 回归只能锁住我们对真机的假设，锁不住真机变了——Codex 一升级改了类名或结构，
+// 测试照样全绿、用户却看见板子歪了/颜色没跟上。与其让用户来发现，不如换肤当场说人话。
+// 严格只读，且**永远不影响换肤结果**（自检本身出错就当没这回事）。
+// 完整版报告见 `npm run smoke`，这里只报最要命的几条。
+export const CONTRACT_SCRIPT = `(() => {
+  const q = (s) => { try { return document.querySelector(s); } catch { return null; } };
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const broken = [];
+  for (const [what, sel, effect] of [
+    ["主区容器", "main.main-surface", "壁纸铺不上"],
+    ["顶栏", "header.app-header-tint", "顶栏配色与品牌行失效"],
+    ["侧栏", "aside.app-shell-left-panel", "侧栏配色失效"],
+    ["会话包装层", "[data-vscode-context]", "壁纸会被挡住"],
+  ]) if (!q(sel)) broken.push({ what: what, effect: effect });
+  if (!/electron-(dark|light)/.test(document.documentElement.className))
+    broken.push({ what: "外观类", effect: "深浅色同步失效" });
+  const deadVars = [
+    ["--color-token-foreground", "文字色"],
+    ["--color-token-side-bar-background", "侧栏底色"],
+    ["--vscode-editor-background", "编辑器与终端底色"],
+  ].filter((v) => !cssVar(v[0])).map((v) => v[1]);
+  if (deadVars.length) broken.push({ what: "token 变量（" + deadVars.join("、") + "）", effect: "这几族颜色接管失效" });
+  // 首页那几条只在首页可见时才判——用户在会话里换肤不该收到假警报
+  const sug = q('[class*="home-suggestions"]');
+  if (sug) {
+    const main = q("main.main-surface");
+    const title = main && (main.querySelector('[class*="heading-xl"]') || main.querySelector('[class*="group/title"]'));
+    if (!title) broken.push({ what: "首页标题结构类名", effect: "标题接管与板子几何可能失控" });
+    if (!sug.parentElement) broken.push({ what: "卡片行父级容器", effect: "标题板挂不上去" });
+    if (!sug.querySelector("button")) broken.push({ what: "首页卡片按钮", effect: "行书字失效" });
+  }
+  return { broken: broken, onHome: !!sug };
+})()`;
+
 export const PROBE_SCRIPT = `(() => {
   if (!document.getElementById("root")) return null;
   const pet = document.getElementById("coskin-pet");
