@@ -55,7 +55,8 @@
 git clone https://github.com/YzYhhhstudy/codex-coskin.git
 ```
 
-② 或者在 GitHub 页面点 **Code → Download ZIP**，**用访达（Finder）双击解压**。
+② 或者去 **[Releases](https://github.com/YzYhhhstudy/codex-coskin/releases/latest) 下载 zip**，
+**用访达（Finder）/ 资源管理器双击解压**。（GitHub 页面的 Code → Download ZIP 也一样能用。）
 > ⚠️ 别用命令行 `unzip` 解压：老版 Info-ZIP 会把中文文件名弄成乱码。访达/资源管理器解压没问题
 > （实测中文名和可执行权限都完好）。ZIP 装的没有 `.git`，自动更新会跳过并提示你重新下载新 ZIP。
 
